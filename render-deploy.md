@@ -99,9 +99,21 @@ docker push tomson112/studyforge-worker:latest
    BACKEND_URL=https://your-backend-url.onrender.com
    ```
 
-## Step 3: Database Setup
+## Step 3: Configure MongoDB Atlas Network Access
 
-After all services are deployed:
+**IMPORTANT**: Before your services can connect to MongoDB Atlas, you must whitelist Render's IP addresses:
+
+1. **Go to MongoDB Atlas Dashboard**
+2. **Navigate to Network Access** (left sidebar)
+3. **Add IP Address** → **Allow Access from Anywhere** (0.0.0.0/0)
+   - For production, consider using Render's specific IP ranges instead
+4. **Confirm** the changes
+
+Without this step, your deployment will fail with connection errors.
+
+## Step 4: Database Setup
+
+After all services are deployed and MongoDB access is configured:
 
 1. **Run migrations** (one-time setup):
    ```bash
@@ -115,16 +127,16 @@ After all services are deployed:
    npm run seed
    ```
 
-## Step 4: Update CORS Configuration
+## Step 5: Update CORS Configuration
 
 Update the backend's CORS_ORIGIN environment variable with your actual frontend URL:
 ```
 CORS_ORIGIN=https://your-frontend-app.onrender.com
 ```
 
-## Step 5: Test Deployment
+## Step 6: Test Deployment
 
-1. **Backend Health Check**: `https://your-backend-app.onrender.com/health`
+1. **Backend Health Check**: `https://studyforge-gwqy.onrender.com/health`
 2. **Frontend Application**: `https://your-frontend-app.onrender.com`
 3. **Demo Login**:
    - Admin: `admin@example.com` / `admin123`
@@ -133,8 +145,8 @@ CORS_ORIGIN=https://your-frontend-app.onrender.com
 ## Render Service URLs
 
 After deployment, you'll have:
-- **Frontend**: `https://studyforge-frontend.onrender.com`
-- **Backend API**: `https://studyforge-backend.onrender.com`
+- **Backend API**: `https://studyforge-gwqy.onrender.com`
+- **Frontend**: `https://your-frontend-app.onrender.com` (to be deployed)
 - **Worker**: Background service (no public URL)
 
 ## Environment Variables Summary
@@ -145,30 +157,33 @@ NODE_ENV=production
 PORT=3001
 MONGODB_URI=mongodb+srv://tt0234240_db_user:E9HVyxFKMiLbiNfj@cluster0.ftdl94i.mongodb.net/cms_db
 JWT_SECRET=your-super-secure-jwt-secret-key-change-in-production
-CORS_ORIGIN=https://studyforge-frontend.onrender.com
+CORS_ORIGIN=https://your-frontend-app.onrender.com
 ```
 
 ### Frontend Service
 ```env
 NODE_ENV=production
-VITE_API_URL=https://studyforge-backend.onrender.com
+VITE_API_URL=https://studyforge-gwqy.onrender.com
 ```
 
 ### Worker Service
 ```env
 NODE_ENV=production
 MONGODB_URI=mongodb+srv://tt0234240_db_user:E9HVyxFKMiLbiNfj@cluster0.ftdl94i.mongodb.net/cms_db
-BACKEND_URL=https://studyforge-backend.onrender.com
+BACKEND_URL=https://studyforge-gwqy.onrender.com
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **CORS Errors**: Ensure CORS_ORIGIN in backend matches frontend URL
-2. **Database Connection**: Verify MongoDB Atlas connection string
-3. **Service Communication**: Check that BACKEND_URL in worker matches backend URL
-4. **Build Failures**: Check Docker build logs for dependency issues
+1. **MongoDB Connection Errors**: 
+   - **Cause**: Render IPs not whitelisted in MongoDB Atlas
+   - **Fix**: Add 0.0.0.0/0 to Network Access in MongoDB Atlas
+2. **CORS Errors**: Ensure CORS_ORIGIN in backend matches frontend URL
+3. **Database Connection**: Verify MongoDB Atlas connection string
+4. **Service Communication**: Check that BACKEND_URL in worker matches backend URL
+5. **Build Failures**: Check Docker build logs for dependency issues
 
 ### Logs and Monitoring
 

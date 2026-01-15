@@ -70,7 +70,7 @@ const getPrograms = async (req, res, next) => {
               $match: {
                 $expr: {
                   $and: [
-                    { $in: ['$termId', '$termIds'] },
+                    { $in: ['$termId', '$$termIds'] },
                     { $eq: ['$status', 'published'] }
                   ]
                 }
@@ -474,9 +474,59 @@ const getTopics = async (req, res, next) => {
   }
 };
 
+/**
+ * DEBUG: Get all programs (simple query for debugging)
+ */
+const debugPrograms = async (req, res, next) => {
+  try {
+    // Simple query to see what's in the database
+    const programs = await Program.find({}).limit(10);
+    const terms = await Term.find({}).limit(10);
+    const lessons = await Lesson.find({}).limit(10);
+    
+    const response = {
+      debug: true,
+      counts: {
+        programs: await Program.countDocuments(),
+        terms: await Term.countDocuments(),
+        lessons: await Lesson.countDocuments(),
+        topics: await Topic.countDocuments()
+      },
+      sample_programs: programs.map(p => ({
+        id: p._id,
+        title: p.title,
+        status: p.status,
+        publishedAt: p.publishedAt
+      })),
+      sample_terms: terms.map(t => ({
+        id: t._id,
+        title: t.title,
+        programId: t.programId
+      })),
+      sample_lessons: lessons.map(l => ({
+        id: l._id,
+        title: l.title,
+        status: l.status,
+        termId: l.termId
+      }))
+    };
+
+    res.json(response);
+
+  } catch (error) {
+    logger.error('Debug programs error:', error);
+    res.status(500).json({
+      error: 'Debug failed',
+      message: error.message,
+      stack: error.stack
+    });
+  }
+};
+
 module.exports = {
   getPrograms,
   getProgram,
   getLesson,
-  getTopics
+  getTopics,
+  debugPrograms
 };
