@@ -9,7 +9,9 @@
     "start": "docker-compose up -d",
     "stop": "docker-compose down",
     "logs": "docker-compose logs -f",
-    "build": "cd frontend && npm run build"
+    "build": "cd frontend && npm run build",
+    "docker:build": "docker-compose build",
+    "docker:push": "echo 'Update DOCKER_USERNAME in build-and-push script, then run: ./build-and-push.sh'"
   },
   "dependencies": {
     "mongodb": "^6.3.0",

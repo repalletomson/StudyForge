@@ -7,7 +7,6 @@ const Lesson = require('../models/Lesson');
 const Topic = require('../models/Topic');
 const ProgramAsset = require('../models/ProgramAsset');
 const LessonAsset = require('../models/LessonAsset');
-const { getRedisClient } = require('../config/redis');
 const logger = require('../config/logger');
 
 /**
@@ -48,23 +47,6 @@ const getPrograms = async (req, res, next) => {
     // Validate limit (max 100 items per page)
     const parsedLimit = Math.min(parseInt(limit) || 20, 100);
 
-    // Build cache key
-    const cacheKey = `catalog:programs:${JSON.stringify({ language, topic, cursor, limit: parsedLimit })}`;
-    const redis = getRedisClient();
-
-    // Try to get from cache
-    if (redis) {
-      try {
-        const cached = await redis.get(cacheKey);
-        if (cached) {
-          setCacheHeaders(res, 300);
-          return res.json(JSON.parse(cached));
-        }
-      } catch (cacheError) {
-        logger.warn('Cache read error:', cacheError);
-      }
-    }
-
     // Build aggregation pipeline to find programs with published lessons
     const pipeline = [
       // Match published programs only
@@ -88,7 +70,7 @@ const getPrograms = async (req, res, next) => {
               $match: {
                 $expr: {
                   $and: [
-                    { $in: ['$termId', '$$termIds'] },
+                    { $in: ['$termId', '$termIds'] },
                     { $eq: ['$status', 'published'] }
                   ]
                 }
@@ -206,15 +188,6 @@ const getPrograms = async (req, res, next) => {
       }
     };
 
-    // Cache the response for 5 minutes
-    if (redis) {
-      try {
-        await redis.setEx(cacheKey, 300, JSON.stringify(response));
-      } catch (cacheError) {
-        logger.warn('Cache write error:', cacheError);
-      }
-    }
-
     setCacheHeaders(res, 300);
     res.json(response);
 
@@ -243,22 +216,6 @@ const getProgram = async (req, res, next) => {
     // Validate ObjectId
     if (!programId.match(/^[0-9a-fA-F]{24}$/)) {
       throw createError('Invalid program ID', 400, 'VALIDATION_ERROR');
-    }
-
-    const cacheKey = `catalog:program:${programId}`;
-    const redis = getRedisClient();
-
-    // Try to get from cache
-    if (redis) {
-      try {
-        const cached = await redis.get(cacheKey);
-        if (cached) {
-          setCacheHeaders(res, 300);
-          return res.json(JSON.parse(cached));
-        }
-      } catch (cacheError) {
-        logger.warn('Cache read error:', cacheError);
-      }
     }
 
     const program = await Program.findById(programId)
@@ -357,15 +314,6 @@ const getProgram = async (req, res, next) => {
       terms: termsWithPublishedLessons
     };
 
-    // Cache the response for 5 minutes
-    if (redis) {
-      try {
-        await redis.setEx(cacheKey, 300, JSON.stringify(response));
-      } catch (cacheError) {
-        logger.warn('Cache write error:', cacheError);
-      }
-    }
-
     setCacheHeaders(res, 300);
     res.json(response);
 
@@ -393,22 +341,6 @@ const getLesson = async (req, res, next) => {
     // Validate ObjectId
     if (!lessonId.match(/^[0-9a-fA-F]{24}$/)) {
       throw createError('Invalid lesson ID', 400, 'VALIDATION_ERROR');
-    }
-
-    const cacheKey = `catalog:lesson:${lessonId}`;
-    const redis = getRedisClient();
-
-    // Try to get from cache
-    if (redis) {
-      try {
-        const cached = await redis.get(cacheKey);
-        if (cached) {
-          setCacheHeaders(res, 300);
-          return res.json(JSON.parse(cached));
-        }
-      } catch (cacheError) {
-        logger.warn('Cache read error:', cacheError);
-      }
     }
 
     const lesson = await Lesson.findById(lessonId);
@@ -454,15 +386,6 @@ const getLesson = async (req, res, next) => {
       assets: formattedAssets
     };
 
-    // Cache the response for 5 minutes
-    if (redis) {
-      try {
-        await redis.setEx(cacheKey, 300, JSON.stringify(response));
-      } catch (cacheError) {
-        logger.warn('Cache write error:', cacheError);
-      }
-    }
-
     setCacheHeaders(res, 300);
     res.json(response);
 
@@ -485,22 +408,6 @@ const getLesson = async (req, res, next) => {
  */
 const getTopics = async (req, res, next) => {
   try {
-    const cacheKey = 'catalog:topics';
-    const redis = getRedisClient();
-
-    // Try to get from cache
-    if (redis) {
-      try {
-        const cached = await redis.get(cacheKey);
-        if (cached) {
-          setCacheHeaders(res, 600); // Cache for 10 minutes
-          return res.json(JSON.parse(cached));
-        }
-      } catch (cacheError) {
-        logger.warn('Cache read error:', cacheError);
-      }
-    }
-
     // Get topics with program counts
     const topics = await Topic.aggregate([
       { $match: { isActive: true } },
@@ -513,7 +420,7 @@ const getTopics = async (req, res, next) => {
               $match: {
                 $expr: {
                   $and: [
-                    { $in: ['$$topicId', '$topicIds'] },
+                    { $in: ['$topicId', '$topicIds'] },
                     { $eq: ['$status', 'published'] }
                   ]
                 }
@@ -550,15 +457,6 @@ const getTopics = async (req, res, next) => {
         program_count: topic.programCount
       }))
     };
-
-    // Cache the response for 10 minutes
-    if (redis) {
-      try {
-        await redis.setEx(cacheKey, 600, JSON.stringify(response));
-      } catch (cacheError) {
-        logger.warn('Cache write error:', cacheError);
-      }
-    }
 
     setCacheHeaders(res, 600);
     res.json(response);

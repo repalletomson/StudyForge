@@ -10,7 +10,6 @@ const morgan = require('morgan');
 const compression = require('compression');
 
 const { connectDatabase } = require('./config/database');
-const { connectRedis } = require('./config/redis');
 const { initGridFS } = require('./services/fileUploadService');
 const logger = require('./config/logger');
 
@@ -43,13 +42,6 @@ async function startServer() {
     
     // Initialize GridFS for file storage
     initGridFS();
-    
-    // Try to connect to Redis (optional)
-    try {
-      await connectRedis();
-    } catch (error) {
-      logger.warn('Starting server without Redis (caching disabled)');
-    }
 
     // Security middleware
     app.use(helmet());

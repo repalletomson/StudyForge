@@ -3,7 +3,6 @@
  */
 const express = require('express');
 const { checkDatabaseHealth } = require('../config/database');
-const { checkRedisHealth, isRedisAvailable } = require('../config/redis');
 const logger = require('../config/logger');
 
 const router = express.Router();
@@ -19,13 +18,9 @@ router.get('/', async (req, res) => {
     // Check database connectivity (required)
     const dbHealthy = await checkDatabaseHealth();
     
-    // Check Redis connectivity (optional)
-    const redisHealthy = await checkRedisHealth();
-    const redisConfigured = isRedisAvailable();
-    
     const responseTime = Date.now() - startTime;
     
-    // System is healthy if database is working (Redis is optional)
+    // System is healthy if database is working
     const isHealthy = dbHealthy;
     
     const healthStatus = {
@@ -37,12 +32,6 @@ router.get('/', async (req, res) => {
           status: dbHealthy ? 'OK' : 'ERROR',
           type: 'MongoDB',
           required: true
-        },
-        cache: {
-          status: redisConfigured ? (redisHealthy ? 'OK' : 'ERROR') : 'DISABLED',
-          type: 'Redis',
-          required: false,
-          message: redisConfigured ? undefined : 'Redis not configured (optional)'
         }
       },
       version: process.env.npm_package_version || '1.0.0',
@@ -64,8 +53,7 @@ router.get('/', async (req, res) => {
       timestamp: new Date().toISOString(),
       error: 'Health check failed',
       services: {
-        database: { status: 'UNKNOWN', required: true },
-        cache: { status: 'UNKNOWN', required: false }
+        database: { status: 'UNKNOWN', required: true }
       }
     });
   }
