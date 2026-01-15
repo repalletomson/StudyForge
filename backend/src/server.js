@@ -49,13 +49,23 @@ async function startServer() {
 
     // Security middleware
     app.use(helmet());
+    
+    // CORS configuration - allow multiple origins
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3001', 
+      'https://studyforge-gwqy.onrender.com',
+      'https://study-forge-git-main-sidharthamahendra-gmailcoms-projects.vercel.app',
+      'https://study-forge-gold.vercel.app'
+    ];
+    
+    // Add environment variable origin if specified
+    if (process.env.CORS_ORIGIN && !allowedOrigins.includes(process.env.CORS_ORIGIN)) {
+      allowedOrigins.push(process.env.CORS_ORIGIN);
+    }
+    
     app.use(cors({
-      origin: [
-        'http://localhost:3000',
-        'http://localhost:3001', 
-        'https://studyforge-gwqy.onrender.com',
-        'https://study-forge-git-main-sidharthamahendra-gmailcoms-projects.vercel.app'
-      ],
+      origin: allowedOrigins,
       credentials: true
     }));
 
