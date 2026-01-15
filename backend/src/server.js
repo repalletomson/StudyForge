@@ -50,7 +50,12 @@ async function startServer() {
     // Security middleware
     app.use(helmet());
     app.use(cors({
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+      origin: [
+        'http://localhost:3000',
+        'http://localhost:3001', 
+        'https://studyforge-gwqy.onrender.com',
+        'https://study-forge-git-main-sidharthamahendra-gmailcoms-projects.vercel.app'
+      ],
       credentials: true
     }));
 
