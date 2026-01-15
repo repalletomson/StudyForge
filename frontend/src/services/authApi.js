@@ -4,6 +4,20 @@
 import api from './api';
 
 /**
+ * Register new user
+ * @param {Object} userData - User registration data
+ * @param {string} userData.firstName - User first name
+ * @param {string} userData.lastName - User last name
+ * @param {string} userData.email - User email
+ * @param {string} userData.password - User password
+ * @returns {Promise<Object>} Registration response with user data
+ */
+export const signup = async (userData) => {
+  const response = await api.post('/api/auth/signup', userData);
+  return response.data;
+};
+
+/**
  * Login user
  * @param {Object} credentials - Login credentials
  * @param {string} credentials.email - User email

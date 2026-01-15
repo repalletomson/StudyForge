@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiUserPlus } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
+import { signup } from '../services/authApi';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
 
@@ -30,24 +31,13 @@ const SignupPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          password: data.password
-        }),
+      // Use the signup function from authApi instead of direct fetch
+      const result = await signup({
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        password: data.password
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Signup failed');
-      }
 
       // Auto-login after successful signup
       await login({ email: data.email, password: data.password });
