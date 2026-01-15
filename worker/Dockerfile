@@ -6,7 +6,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install production dependencies only
 RUN npm ci --only=production
 
 # Copy source code
@@ -20,5 +20,5 @@ RUN adduser -S nodejs -u 1001
 RUN chown -R nodejs:nodejs /app
 USER nodejs
 
-# Start the application
+# Start the application in production mode
 CMD ["npm", "start"]

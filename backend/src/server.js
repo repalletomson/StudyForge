@@ -1,5 +1,5 @@
 /**
- * Main server file for CMS Backend API
+ * Main server file for StudyForge Backend API
  */
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 
@@ -11,7 +11,11 @@ const compression = require('compression');
 
 const { connectDatabase } = require('./config/database');
 const { connectRedis } = require('./config/redis');
+const { initGridFS } = require('./services/fileUploadService');
 const logger = require('./config/logger');
+
+// Import models to ensure they're registered with mongoose
+require('./models');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -23,6 +27,9 @@ const healthRoutes = require('./routes/health');
 const errorHandler = require('./middleware/errorHandler');
 const requestLogger = require('./middleware/requestLogger');
 
+// Import controllers
+const { serveAsset } = require('./controllers/assetController');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -33,6 +40,9 @@ async function startServer() {
   try {
     // Connect to databases
     await connectDatabase();
+    
+    // Initialize GridFS for file storage
+    initGridFS();
     
     // Try to connect to Redis (optional)
     try {
@@ -51,20 +61,9 @@ async function startServer() {
     // General middleware
     app.use(compression());
     
-    // JSON parsing with error handling
+    // JSON parsing with proper error handling
     app.use(express.json({ 
-      limit: '10mb',
-      verify: (req, res, buf) => {
-        try {
-          JSON.parse(buf);
-        } catch (e) {
-          res.status(400).json({
-            message: 'Invalid JSON format',
-            error: e.message
-          });
-          return;
-        }
-      }
+      limit: '10mb'
     }));
     app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -77,6 +76,9 @@ async function startServer() {
     app.use('/api/auth', authRoutes);
     app.use('/api/admin', adminRoutes);
     app.use('/catalog', catalogRoutes);
+    
+    // Asset serving route (public)
+    app.get('/api/assets/:fileId', serveAsset);
 
     // Error handling
     app.use(errorHandler);

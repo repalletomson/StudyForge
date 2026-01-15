@@ -51,12 +51,55 @@ export const updateProgram = async (id, programData) => {
   const response = await api.put(`/api/admin/programs/${id}`, programData);
   return response.data;
 };
-
-/**
- * Delete program
- * @param {string} id - Program ID
- * @returns {Promise<void>}
- */
 export const deleteProgram = async (id) => {
   await api.delete(`/api/admin/programs/${id}`);
+};
+
+/**
+ * Publish program
+ * @param {string} id - Program ID
+ * @param {Object} publishData - Publish data (languages)
+ * @returns {Promise<Object>} Updated program
+ */
+export const publishProgram = async (id, publishData) => {
+  const response = await api.post(`/api/admin/programs/${id}/publish`, publishData);
+  return response.data;
+};
+
+/**
+ * Schedule program publishing
+ * @param {string} id - Program ID
+ * @param {Object} scheduleData - Schedule data (scheduledPublishAt, languages)
+ * @returns {Promise<Object>} Updated program
+ */
+export const scheduleProgram = async (id, scheduleData) => {
+  const response = await api.post(`/api/admin/programs/${id}/schedule`, scheduleData);
+  return response.data;
+};
+
+/**
+ * Archive program
+ * @param {string} id - Program ID
+ * @returns {Promise<Object>} Updated program
+ */
+export const archiveProgram = async (id) => {
+  const response = await api.post(`/api/admin/programs/${id}/archive`);
+  return response.data;
+};
+
+/**
+ * Update program assets
+ * @param {string} id - Program ID
+ * @param {string} language - Language code
+ * @param {string} assetType - Asset type (poster)
+ * @param {Object} assets - Asset URLs by variant
+ * @returns {Promise<Object>} Update response
+ */
+export const updateProgramAssets = async (id, language, assetType, assets) => {
+  const response = await api.put(`/api/admin/programs/${id}/assets`, {
+    language,
+    assetType,
+    assets
+  });
+  return response.data;
 };

@@ -1,0 +1,244 @@
+/**
+ * Program Media Section Component
+ * Manages program posters for different variants
+ */
+import { useState, useEffect } from 'react';
+import { FiImage, FiSave, FiAlertCircle } from 'react-icons/fi';
+import AssetInput from '../ui/AssetInput';
+import toast from 'react-hot-toast';
+
+const ProgramMediaSection = ({ program, onAssetsUpdate }) => {
+  const [assets, setAssets] = useState({
+    portrait: '',
+    landscape: '',
+    square: '',
+    banner: ''
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Initialize assets from program data
+  useEffect(() => {
+    if (program?.assets?.posters?.[program.languagePrimary]) {
+      const programAssets = program.assets.posters[program.languagePrimary];
+      setAssets({
+        portrait: programAssets.portrait || '',
+        landscape: programAssets.landscape || '',
+        square: programAssets.square || '',
+        banner: programAssets.banner || ''
+      });
+    }
+  }, [program]);
+
+  // Track changes
+  useEffect(() => {
+    if (!program?.assets?.posters?.[program.languagePrimary]) {
+      setHasChanges(Object.values(assets).some(url => url.trim()));
+      return;
+    }
+
+    const originalAssets = program.assets.posters[program.languagePrimary];
+    const changed = Object.keys(assets).some(variant => 
+      (assets[variant] || '') !== (originalAssets[variant] || '')
+    );
+    setHasChanges(changed);
+  }, [assets, program]);
+
+  const handleAssetChange = (variant, url) => {
+    setAssets(prev => ({
+      ...prev,
+      [variant]: url
+    }));
+  };
+
+  const validateRequiredAssets = () => {
+    const errors = [];
+    if (!assets.portrait?.trim()) {
+      errors.push('Portrait poster is required');
+    }
+    if (!assets.landscape?.trim()) {
+      errors.push('Landscape poster is required');
+    }
+    return errors;
+  };
+
+  const handleSave = async () => {
+    const errors = validateRequiredAssets();
+    if (errors.length > 0) {
+      toast.error(errors.join(', '));
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/admin/programs/${program._id}/assets`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          language: program.languagePrimary,
+          assetType: 'poster',
+          assets: Object.entries(assets)
+            .filter(([_, url]) => url.trim())
+            .reduce((acc, [variant, url]) => {
+              acc[variant] = url.trim();
+              return acc;
+            }, {})
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to save assets');
+      }
+
+      toast.success('Program media saved successfully');
+      setHasChanges(false);
+      
+      // Notify parent component to refresh program data
+      if (onAssetsUpdate) {
+        onAssetsUpdate();
+      }
+    } catch (error) {
+      console.error('Error saving program assets:', error);
+      toast.error(error.message || 'Failed to save program media');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const requiredVariants = ['portrait', 'landscape'];
+  const optionalVariants = ['square', 'banner'];
+  const missingRequired = requiredVariants.filter(variant => !assets[variant]?.trim());
+
+  return (
+    <div className="bg-gray-900 rounded-lg border border-gray-800">
+      <div className="px-6 py-4 border-b border-gray-800">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center">
+              <FiImage className="w-4 h-4 text-purple-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">Program Media</h3>
+              <p className="text-sm text-gray-400">
+                Manage posters for {program?.languagePrimary?.toUpperCase() || 'primary'} language
+              </p>
+            </div>
+          </div>
+          
+          {hasChanges && (
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSaving ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <FiSave className="w-4 h-4 mr-2" />
+                  Save Media
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="p-6 space-y-6">
+        {/* Validation Warning */}
+        {missingRequired.length > 0 && (
+          <div className="p-4 bg-red-900/20 border border-red-800 rounded-lg">
+            <div className="flex items-start">
+              <FiAlertCircle className="w-5 h-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+              <div>
+                <h4 className="text-sm font-medium text-red-400">Required posters missing</h4>
+                <p className="text-sm text-red-300 mt-1">
+                  Portrait and landscape posters are required before publishing this program.
+                </p>
+                <ul className="text-sm text-red-300 mt-2 list-disc list-inside">
+                  {missingRequired.map(variant => (
+                    <li key={variant}>
+                      {variant.charAt(0).toUpperCase() + variant.slice(1)} poster
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Required Assets */}
+        <div>
+          <h4 className="text-sm font-medium text-gray-300 mb-4">Required Posters</h4>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AssetInput
+              label="Portrait Poster"
+              value={assets.portrait}
+              onChange={(url) => handleAssetChange('portrait', url)}
+              placeholder="https://example.com/portrait-poster.jpg"
+              required={true}
+              aspectRatio="3:4"
+              compact={true}
+            />
+            <AssetInput
+              label="Landscape Poster"
+              value={assets.landscape}
+              onChange={(url) => handleAssetChange('landscape', url)}
+              placeholder="https://example.com/landscape-poster.jpg"
+              required={true}
+              aspectRatio="4:3"
+              compact={true}
+            />
+          </div>
+        </div>
+
+        {/* Optional Assets */}
+        <div>
+          <h4 className="text-sm font-medium text-gray-300 mb-4">Optional Posters</h4>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AssetInput
+              label="Square Poster"
+              value={assets.square}
+              onChange={(url) => handleAssetChange('square', url)}
+              placeholder="https://example.com/square-poster.jpg"
+              aspectRatio="1:1"
+              compact={true}
+            />
+            <AssetInput
+              label="Banner Poster"
+              value={assets.banner}
+              onChange={(url) => handleAssetChange('banner', url)}
+              placeholder="https://example.com/banner-poster.jpg"
+              aspectRatio="16:9"
+              compact={true}
+            />
+          </div>
+        </div>
+
+        {/* Usage Guidelines */}
+        <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+          <h4 className="text-sm font-medium text-gray-300 mb-2">Usage Guidelines</h4>
+          <ul className="text-sm text-gray-400 space-y-1">
+            <li>• <strong>Portrait:</strong> Used on mobile and narrow screens</li>
+            <li>• <strong>Landscape:</strong> Used on desktop and wide screens</li>
+            <li>• <strong>Square:</strong> Used for social media and grid layouts</li>
+            <li>• <strong>Banner:</strong> Used for hero sections and featured content</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ProgramMediaSection;

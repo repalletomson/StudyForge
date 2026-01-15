@@ -1,117 +1,73 @@
 version: '3.8'
 
 services:
-  # MongoDB Database
-  db:
-    image: mongo:7
-    container_name: cms-db
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: cms_user
-      MONGO_INITDB_ROOT_PASSWORD: cms_password
-      MONGO_INITDB_DATABASE: cms_db
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-      - ./backend/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: cms-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Backend API
+  # Backend API Service
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: cms-backend
-    environment:
-      NODE_ENV: development
-      PORT: 3001
-      MONGODB_URI: mongodb://cms_user:cms_password@db:27017/cms_db?authSource=admin
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: your-super-secret-jwt-key-change-in-production
-      CORS_ORIGIN: http://localhost:3000
+    container_name: studyforge-backend
     ports:
       - "3001:3001"
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-    command: npm run dev
-
-  # Publishing Worker
-  worker:
-    build:
-      context: ./worker
-      dockerfile: Dockerfile
-    container_name: cms-worker
     environment:
-      NODE_ENV: development
-      MONGODB_URI: mongodb://cms_user:cms_password@db:27017/cms_db?authSource=admin
-      REDIS_URL: redis://redis:6379
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - NODE_ENV=production
+      - PORT=3001
+      - MONGODB_URI=${MONGODB_URI}
+      - JWT_SECRET=${JWT_SECRET}
+      - CORS_ORIGIN=http://localhost:5173
     volumes:
-      - ./worker:/app
-      - /app/node_modules
-    command: npm run dev
+      - backend_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - studyforge-network
 
-  # Frontend Web App
+  # Frontend React Application
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: cms-frontend
+    container_name: studyforge-frontend
+    ports:
+      - "5173:5173"
     environment:
-      VITE_API_URL: http://localhost:3001
-    ports:
-      - "3000:3000"
+      - NODE_ENV=production
+      - VITE_API_URL=http://localhost:3001
     depends_on:
-      - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    command: npm run dev
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - studyforge-network
 
-  # Nginx Reverse Proxy (for production)
-  nginx:
-    image: nginx:alpine
-    container_name: cms-nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/ssl:/etc/nginx/ssl
+  # Background Worker Service
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: studyforge-worker
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=${MONGODB_URI}
+      - BACKEND_URL=http://backend:3001
     depends_on:
-      - backend
-      - frontend
-    profiles:
-      - production
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - studyforge-network
 
+# Named volumes for data persistence
 volumes:
-  mongo_data:
-  redis_data:
+  backend_uploads:
+    driver: local
+
+# Network for service communication
+networks:
+  studyforge-network:
+    driver: bridge

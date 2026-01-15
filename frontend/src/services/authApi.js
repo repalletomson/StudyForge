@@ -11,7 +11,7 @@ import api from './api';
  * @returns {Promise<Object>} Login response with token and user data
  */
 export const login = async (credentials) => {
-  const response = await api.post('http:localhost:3001/api/auth/login', credentials);
+  const response = await api.post('/api/auth/login', credentials);
   return response.data;
 };
 

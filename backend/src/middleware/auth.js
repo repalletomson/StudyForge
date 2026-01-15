@@ -36,7 +36,7 @@ const authenticate = async (req, res, next) => {
     const token = authHeader.substring(7);
     
     // Use same fallback JWT_SECRET as in login route
-    const jwtSecret = process.env.JWT_SECRET || 'temporary-jwt-secret-for-testing';
+    const jwtSecret = process.env.JWT_SECRET || 'temporary-jwt-secret-for-development-only';
     
     const decoded = jwt.verify(token, jwtSecret);
     

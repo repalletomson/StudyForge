@@ -1,0 +1,216 @@
+/**
+ * Lesson Media Section Component
+ * Manages lesson thumbnails for different variants
+ */
+import { useState, useEffect } from 'react';
+import { FiImage, FiSave, FiAlertCircle } from 'react-icons/fi';
+import AssetInput from '../ui/AssetInput';
+import toast from 'react-hot-toast';
+
+const LessonMediaSection = ({ lesson, onAssetsUpdate }) => {
+  const [assets, setAssets] = useState({
+    portrait: '',
+    landscape: ''
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Initialize assets from lesson data
+  useEffect(() => {
+    if (lesson?.assets?.thumbnail?.[lesson.contentLanguagePrimary]) {
+      const lessonAssets = lesson.assets.thumbnail[lesson.contentLanguagePrimary];
+      setAssets({
+        portrait: lessonAssets.portrait || '',
+        landscape: lessonAssets.landscape || ''
+      });
+    }
+  }, [lesson]);
+
+  // Track changes
+  useEffect(() => {
+    if (!lesson?.assets?.thumbnail?.[lesson.contentLanguagePrimary]) {
+      setHasChanges(Object.values(assets).some(url => url.trim()));
+      return;
+    }
+
+    const originalAssets = lesson.assets.thumbnail[lesson.contentLanguagePrimary];
+    const changed = Object.keys(assets).some(variant => 
+      (assets[variant] || '') !== (originalAssets[variant] || '')
+    );
+    setHasChanges(changed);
+  }, [assets, lesson]);
+
+  const handleAssetChange = (variant, url) => {
+    setAssets(prev => ({
+      ...prev,
+      [variant]: url
+    }));
+  };
+
+  const validateRequiredAssets = () => {
+    const errors = [];
+    if (!assets.portrait?.trim()) {
+      errors.push('Portrait thumbnail is required');
+    }
+    if (!assets.landscape?.trim()) {
+      errors.push('Landscape thumbnail is required');
+    }
+    return errors;
+  };
+
+  const handleSave = async () => {
+    const errors = validateRequiredAssets();
+    if (errors.length > 0) {
+      toast.error(errors.join(', '));
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/admin/lessons/${lesson._id}/assets`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          language: lesson.contentLanguagePrimary,
+          assetType: 'thumbnail',
+          assets: Object.entries(assets)
+            .filter(([_, url]) => url.trim())
+            .reduce((acc, [variant, url]) => {
+              acc[variant] = url.trim();
+              return acc;
+            }, {})
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to save assets');
+      }
+
+      toast.success('Lesson media saved successfully');
+      setHasChanges(false);
+      
+      // Notify parent component to refresh lesson data
+      if (onAssetsUpdate) {
+        onAssetsUpdate();
+      }
+    } catch (error) {
+      console.error('Error saving lesson assets:', error);
+      toast.error(error.message || 'Failed to save lesson media');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const requiredVariants = ['portrait', 'landscape'];
+  const missingRequired = requiredVariants.filter(variant => !assets[variant]?.trim());
+
+  return (
+    <div className="bg-gray-900 rounded-lg border border-gray-800">
+      <div className="px-6 py-4 border-b border-gray-800">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
+              <FiImage className="w-4 h-4 text-blue-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">Lesson Media</h3>
+              <p className="text-sm text-gray-400">
+                Manage thumbnails for {lesson?.contentLanguagePrimary?.toUpperCase() || 'primary'} language
+              </p>
+            </div>
+          </div>
+          
+          {hasChanges && (
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSaving ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <FiSave className="w-4 h-4 mr-2" />
+                  Save Media
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="p-6 space-y-6">
+        {/* Validation Warning */}
+        {missingRequired.length > 0 && (
+          <div className="p-4 bg-red-900/20 border border-red-800 rounded-lg">
+            <div className="flex items-start">
+              <FiAlertCircle className="w-5 h-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+              <div>
+                <h4 className="text-sm font-medium text-red-400">Required thumbnails missing</h4>
+                <p className="text-sm text-red-300 mt-1">
+                  Portrait and landscape thumbnails are required before publishing this lesson.
+                </p>
+                <ul className="text-sm text-red-300 mt-2 list-disc list-inside">
+                  {missingRequired.map(variant => (
+                    <li key={variant}>
+                      {variant.charAt(0).toUpperCase() + variant.slice(1)} thumbnail
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Required Thumbnails */}
+        <div>
+          <h4 className="text-sm font-medium text-gray-300 mb-4">Required Thumbnails</h4>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AssetInput
+              label="Portrait Thumbnail"
+              value={assets.portrait}
+              onChange={(url) => handleAssetChange('portrait', url)}
+              placeholder="https://example.com/portrait-thumbnail.jpg"
+              required={true}
+              aspectRatio="3:4"
+              compact={true}
+            />
+            <AssetInput
+              label="Landscape Thumbnail"
+              value={assets.landscape}
+              onChange={(url) => handleAssetChange('landscape', url)}
+              placeholder="https://example.com/landscape-thumbnail.jpg"
+              required={true}
+              aspectRatio="4:3"
+              compact={true}
+            />
+          </div>
+        </div>
+
+        {/* Usage Guidelines */}
+        <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+          <h4 className="text-sm font-medium text-gray-300 mb-2">Usage Guidelines</h4>
+          <ul className="text-sm text-gray-400 space-y-1">
+            <li>• <strong>Portrait:</strong> Used on mobile and narrow screens in lesson lists</li>
+            <li>• <strong>Landscape:</strong> Used on desktop and wide screens in lesson lists</li>
+            <li>• Thumbnails should clearly represent the lesson content</li>
+            <li>• Use high-quality images with good contrast and readability</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default LessonMediaSection;

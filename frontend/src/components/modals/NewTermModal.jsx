@@ -22,21 +22,37 @@ const NewTermModal = ({ isOpen, onClose, programId }) => {
     }
   });
 
-  // Mock mutation - in real app this would call the API
+  // Create term mutation
   const createTermMutation = useMutation(
     async (data) => {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return { ...data, _id: Math.random().toString(36).substr(2, 9) };
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/admin/programs/${programId}/terms`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create term');
+      }
+
+      return response.json();
     },
     {
       onSuccess: () => {
+        // Invalidate multiple queries for real-time updates
+        queryClient.invalidateQueries(['terms', programId]);
         queryClient.invalidateQueries(['program', programId]);
-        toast.success('Term created successfully!');
+        queryClient.invalidateQueries(['programs']); // Update programs list
+        toast.success('Term created successfully');
         handleClose();
       },
       onError: (error) => {
-        toast.error('Failed to create term');
+        toast.error(error.message || 'Failed to create term');
       }
     }
   );
@@ -63,25 +79,25 @@ const NewTermModal = ({ isOpen, onClose, programId }) => {
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         {/* Background overlay */}
         <div 
-          className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 backdrop-blur-sm"
+          className="fixed inset-0 transition-opacity bg-slate-900/75 backdrop-blur-sm"
           onClick={handleClose}
         />
 
         {/* Modal */}
-        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-2xl rounded-2xl animate-slide-up">
+        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-slate-900 shadow-2xl rounded-2xl animate-slide-up border border-slate-800">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-xl font-bold text-gray-900 font-display">
+              <h3 className="text-xl font-bold text-slate-100 font-heading">
                 Add New Term
               </h3>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-slate-400">
                 Create a new term for this program
               </p>
             </div>
             <button
               onClick={handleClose}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
             >
               <FiX className="w-5 h-5" />
             </button>
@@ -89,11 +105,11 @@ const NewTermModal = ({ isOpen, onClose, programId }) => {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div>
-              <label className="form-label">Term Number *</label>
+              <label className="form-label">Term Number</label>
               <input
                 type="number"
                 min="1"
-                className={`form-input ${errors.termNumber ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                className={`form-input ${errors.termNumber ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                 placeholder="Enter term number"
                 {...register('termNumber', { 
                   required: 'Term number is required',
@@ -113,13 +129,13 @@ const NewTermModal = ({ isOpen, onClose, programId }) => {
                 placeholder="Enter term title (optional)"
                 {...register('title')}
               />
-              <p className="mt-1 text-xs text-gray-500">
-                Leave empty to use "Term {termNumber}" as the title
+              <p className="mt-1 text-xs text-slate-500">
+                Leave empty to use default term title
               </p>
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+            <div className="flex items-center justify-end space-x-4 pt-6 border-t border-slate-800">
               <button
                 type="button"
                 onClick={handleClose}

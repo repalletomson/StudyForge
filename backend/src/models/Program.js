@@ -2,6 +2,7 @@
  * Program model for educational programs
  */
 const mongoose = require('mongoose');
+const { PROGRAM_STATUS } = require('./constants');
 
 const programSchema = new mongoose.Schema({
   title: {
@@ -13,33 +14,6 @@ const programSchema = new mongoose.Schema({
   description: {
     type: String,
     maxlength: 2000
-  },
-  // YouTube video integration
-  youtubeUrl: {
-    type: String,
-    validate: {
-      validator: function(url) {
-        if (!url) return true; // Optional field
-        const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/;
-        return youtubeRegex.test(url);
-      },
-      message: 'Please provide a valid YouTube URL'
-    }
-  },
-  youtubeVideoId: {
-    type: String // Extracted from YouTube URL
-  },
-  // Image handling
-  thumbnail: {
-    type: String, // URL to thumbnail image
-    default: function() {
-      // Default Unsplash image for education
-      return `https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&h=600&fit=crop&crop=entropy&auto=format&q=80`;
-    }
-  },
-  customThumbnail: {
-    type: Boolean,
-    default: false // Track if user uploaded custom thumbnail
   },
   languagePrimary: {
     type: String,
@@ -59,34 +33,25 @@ const programSchema = new mongoose.Schema({
   status: {
     type: String,
     required: true,
-    enum: ['draft', 'published', 'archived'],
-    default: 'draft'
+    enum: Object.values(PROGRAM_STATUS),
+    default: PROGRAM_STATUS.DRAFT
   },
   publishedAt: {
     type: Date
   },
+  scheduledPublishAt: {
+    type: Date
+  },
+  archivedAt: {
+    type: Date
+  },
+  publishedLanguages: {
+    type: [String],
+    default: []
+  },
   topicIds: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Topic'
-  }],
-  // Additional metadata
-  difficulty: {
-    type: String,
-    enum: ['beginner', 'intermediate', 'advanced'],
-    default: 'beginner'
-  },
-  duration: {
-    type: Number, // Duration in minutes
-    min: 0
-  },
-  price: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  tags: [{
-    type: String,
-    trim: true
   }]
 }, {
   timestamps: true,
@@ -105,24 +70,11 @@ programSchema.index({ createdAt: -1 });
 programSchema.index({ title: 'text', description: 'text' });
 
 /**
- * Extract YouTube video ID from URL and save it
- */
-programSchema.pre('save', function(next) {
-  if (this.youtubeUrl && this.isModified('youtubeUrl')) {
-    const match = this.youtubeUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-    if (match) {
-      this.youtubeVideoId = match[1];
-    }
-  }
-  next();
-});
-
-/**
  * Auto-publish program when first lesson is published
  */
 programSchema.methods.autoPublish = async function() {
-  if (this.status === 'draft') {
-    this.status = 'published';
+  if (this.status === PROGRAM_STATUS.DRAFT) {
+    this.status = PROGRAM_STATUS.PUBLISHED;
     this.publishedAt = this.publishedAt || new Date();
     return this.save();
   }
@@ -182,5 +134,8 @@ programSchema.methods.validateAssets = async function() {
       : 'All required assets are present'
   };
 };
+
+// Export constants
+programSchema.statics.STATUS = PROGRAM_STATUS;
 
 module.exports = mongoose.model('Program', programSchema);

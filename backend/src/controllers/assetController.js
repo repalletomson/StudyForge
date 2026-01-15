@@ -3,6 +3,7 @@
  */
 const ProgramAsset = require('../models/ProgramAsset');
 const LessonAsset = require('../models/LessonAsset');
+const { uploadToGridFS, deleteFileFromGridFS } = require('../services/fileUploadService');
 const logger = require('../config/logger');
 
 /**
@@ -22,13 +23,27 @@ const createError = (message, statusCode = 500, code = 'APPLICATION_ERROR') => {
 const uploadProgramAsset = async (req, res, next) => {
   try {
     const { id: programId } = req.params;
-    const { language, variant, url } = req.body;
+    const { language, variant } = req.body;
 
-    if (!language || !variant || !url) {
-      throw createError('Language, variant, and URL are required', 400, 'VALIDATION_ERROR');
+    if (!language || !variant) {
+      throw createError('Language and variant are required', 400, 'VALIDATION_ERROR');
     }
 
-    // Check if asset already exists and update or create
+    if (!req.file) {
+      throw createError('No file uploaded', 400, 'VALIDATION_ERROR');
+    }
+
+    const { buffer, originalname, mimetype, size } = req.file;
+
+    // Upload file to GridFS
+    const fileId = await uploadToGridFS(buffer, originalname, mimetype, {
+      programId,
+      language,
+      variant,
+      assetType: 'poster'
+    });
+
+    // Check if asset already exists and delete old file
     const existingAsset = await ProgramAsset.findOne({
       programId,
       language,
@@ -36,31 +51,58 @@ const uploadProgramAsset = async (req, res, next) => {
       assetType: 'poster'
     });
 
-    let asset;
     if (existingAsset) {
-      existingAsset.url = url;
-      asset = await existingAsset.save();
+      // Delete old file from GridFS
+      try {
+        await deleteFileFromGridFS(existingAsset.fileId);
+      } catch (error) {
+        logger.warn('Failed to delete old asset file', { fileId: existingAsset.fileId, error: error.message });
+      }
+      
+      // Update existing asset
+      existingAsset.fileId = fileId;
+      existingAsset.filename = originalname;
+      existingAsset.mimeType = mimetype;
+      existingAsset.fileSize = size;
+      await existingAsset.save();
+      
+      logger.info('Program asset updated', {
+        assetId: existingAsset._id,
+        fileId,
+        programId,
+        language,
+        variant,
+        userId: req.user._id,
+        correlationId: req.correlationId
+      });
+
+      res.status(200).json(existingAsset);
     } else {
-      asset = new ProgramAsset({
+      // Create new asset
+      const asset = new ProgramAsset({
         programId,
         language,
         variant,
         assetType: 'poster',
-        url
+        fileId,
+        filename: originalname,
+        mimeType: mimetype,
+        fileSize: size
       });
       await asset.save();
+
+      logger.info('Program asset uploaded', {
+        assetId: asset._id,
+        fileId,
+        programId,
+        language,
+        variant,
+        userId: req.user._id,
+        correlationId: req.correlationId
+      });
+
+      res.status(201).json(asset);
     }
-
-    logger.info('Program asset uploaded', {
-      assetId: asset._id,
-      programId,
-      language,
-      variant,
-      userId: req.user._id,
-      correlationId: req.correlationId
-    });
-
-    res.status(201).json(asset);
 
   } catch (error) {
     next(error);
@@ -80,10 +122,19 @@ const deleteProgramAsset = async (req, res, next) => {
       throw createError('Asset not found', 404, 'RESOURCE_NOT_FOUND');
     }
 
+    // Delete file from GridFS
+    try {
+      await deleteFileFromGridFS(asset.fileId);
+    } catch (error) {
+      logger.warn('Failed to delete asset file from GridFS', { fileId: asset.fileId, error: error.message });
+    }
+
+    // Delete asset record
     await ProgramAsset.findByIdAndDelete(assetId);
 
     logger.info('Program asset deleted', {
       assetId: asset._id,
+      fileId: asset.fileId,
       programId: asset.programId,
       userId: req.user._id,
       correlationId: req.correlationId
@@ -93,6 +144,39 @@ const deleteProgramAsset = async (req, res, next) => {
 
   } catch (error) {
     next(error);
+  }
+};
+
+/**
+ * GET /api/assets/:fileId
+ * Serve asset file
+ */
+const serveAsset = async (req, res, next) => {
+  try {
+    const { fileId } = req.params;
+    const { getFileFromGridFS, getFileInfo } = require('../services/fileUploadService');
+
+    // Get file info
+    const fileInfo = await getFileInfo(fileId);
+    
+    // Set appropriate headers
+    res.set({
+      'Content-Type': fileInfo.metadata.mimetype,
+      'Content-Length': fileInfo.length,
+      'Cache-Control': 'public, max-age=31536000', // Cache for 1 year
+      'ETag': fileInfo._id.toString()
+    });
+
+    // Stream file
+    const downloadStream = await getFileFromGridFS(fileId);
+    downloadStream.pipe(res);
+
+  } catch (error) {
+    if (error.message === 'File not found') {
+      res.status(404).json({ error: 'Asset not found' });
+    } else {
+      next(error);
+    }
   }
 };
 
@@ -181,5 +265,6 @@ module.exports = {
   uploadProgramAsset,
   deleteProgramAsset,
   uploadLessonAsset,
-  deleteLessonAsset
+  deleteLessonAsset,
+  serveAsset
 };

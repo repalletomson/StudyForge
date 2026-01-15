@@ -147,10 +147,82 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
+/**
+ * PATCH /api/admin/users/:id/status
+ * Toggle user active status
+ */
+const toggleUserStatus = async (req, res, next) => {
+  try {
+    const { isActive } = req.body;
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      throw createError('User not found', 404, 'RESOURCE_NOT_FOUND');
+    }
+
+    // Prevent deactivating self
+    if (user._id.toString() === req.user._id.toString() && !isActive) {
+      throw createError('Cannot deactivate your own account', 400, 'VALIDATION_ERROR');
+    }
+
+    user.isActive = isActive;
+    await user.save();
+
+    logger.info('User status toggled', {
+      userId: user._id,
+      email: user.email,
+      isActive: user.isActive,
+      updatedBy: req.user._id,
+      correlationId: req.correlationId
+    });
+
+    res.json(user);
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/admin/users/:id/reset-password
+ * Reset user password
+ */
+const resetUserPassword = async (req, res, next) => {
+  try {
+    const { newPassword } = req.body;
+
+    if (!newPassword) {
+      throw createError('New password is required', 400, 'VALIDATION_ERROR');
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      throw createError('User not found', 404, 'RESOURCE_NOT_FOUND');
+    }
+
+    user.passwordHash = newPassword; // Will be hashed by pre-save middleware
+    await user.save();
+
+    logger.info('User password reset', {
+      userId: user._id,
+      email: user.email,
+      resetBy: req.user._id,
+      correlationId: req.correlationId
+    });
+
+    res.json({ message: 'Password reset successfully' });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getUsers,
   createUser,
   getUser,
   updateUser,
-  deleteUser
+  deleteUser,
+  toggleUserStatus,
+  resetUserPassword
 };

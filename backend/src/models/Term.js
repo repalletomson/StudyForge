@@ -18,6 +18,11 @@ const termSchema = new mongoose.Schema({
     type: String,
     trim: true,
     maxlength: 255
+  },
+  status: {
+    type: String,
+    enum: ['open', 'closed'],
+    default: 'open'
   }
 }, {
   timestamps: true,
@@ -31,7 +36,9 @@ const termSchema = new mongoose.Schema({
 
 // Compound unique index
 termSchema.index({ programId: 1, termNumber: 1 }, { unique: true });
+// Additional indexes for performance
 termSchema.index({ programId: 1 });
+termSchema.index({ createdAt: -1 });
 
 /**
  * Get lessons count for this term
@@ -65,6 +72,24 @@ termSchema.methods.getNextLessonNumber = async function() {
     .select('lessonNumber');
   
   return lastLesson ? lastLesson.lessonNumber + 1 : 1;
+};
+
+/**
+ * Close this term (hide lessons)
+ * @returns {Promise<Object>}
+ */
+termSchema.methods.close = async function() {
+  this.status = 'closed';
+  return this.save();
+};
+
+/**
+ * Open this term (show lessons)
+ * @returns {Promise<Object>}
+ */
+termSchema.methods.open = async function() {
+  this.status = 'open';
+  return this.save();
 };
 
 module.exports = mongoose.model('Term', termSchema);

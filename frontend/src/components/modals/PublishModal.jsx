@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from 'react-query';
 import { FiX, FiCalendar, FiClock, FiGlobe, FiCheck, FiAlertTriangle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import * as programApi from '../../services/programApi';
+import * as lessonApi from '../../services/lessonApi';
 
 const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
   const [publishType, setPublishType] = useState('now'); // 'now' or 'scheduled'
@@ -24,16 +26,25 @@ const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
 
   const publishMutation = useMutation(
     async (publishData) => {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      return {
-        ...entity,
-        status: publishData.publishType === 'now' ? 'published' : 'scheduled',
-        publishedAt: publishData.publishType === 'now' ? new Date() : null,
-        scheduledPublishAt: publishData.publishType === 'scheduled' ? new Date(publishData.scheduledDateTime) : null,
-        publishedLanguages: publishData.languages
-      };
+      if (publishData.publishType === 'now') {
+        if (entityType === 'program') {
+          return await programApi.publishProgram(entity._id, { languages: publishData.languages });
+        } else {
+          return await lessonApi.publishLesson(entity._id, { languages: publishData.languages });
+        }
+      } else {
+        if (entityType === 'program') {
+          return await programApi.scheduleProgram(entity._id, {
+            scheduledPublishAt: publishData.scheduledDateTime,
+            languages: publishData.languages
+          });
+        } else {
+          return await lessonApi.scheduleLesson(entity._id, {
+            scheduledPublishAt: publishData.scheduledDateTime,
+            languages: publishData.languages
+          });
+        }
+      }
     },
     {
       onSuccess: (updatedEntity) => {

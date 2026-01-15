@@ -1,18 +1,53 @@
 /**
  * Asset Manager Modal Component
  */
-import { useState } from 'react';
-import { FiX, FiImage, FiUpload, FiTrash2 } from 'react-icons/fi';
+import { useState, useEffect } from 'react';
+import { useQueryClient } from 'react-query';
+import { FiX } from 'react-icons/fi';
 import AssetUploader from '../ui/AssetUploader';
+import toast from 'react-hot-toast';
 
-const AssetManagerModal = ({ isOpen, onClose, entity, entityType }) => {
+const AssetManagerModal = ({ isOpen, onClose, entity, entityType, onAssetUpdate }) => {
   const [selectedLanguage, setSelectedLanguage] = useState(entity?.languagePrimary || 'en');
+  const [refreshKey, setRefreshKey] = useState(0);
   const variants = ['portrait', 'landscape', 'square', 'banner'];
-  const assetType = entityType === 'program' ? 'poster' : 'thumbnail';
+  const assetType = entityType === 'program' ? 'posters' : 'thumbnails';
   const availableLanguages = entity?.languagesAvailable || ['en'];
+  
+  const queryClient = useQueryClient();
 
-  const handleAssetUpload = (language, variant, result) => {
+  // Debug: Log entity data when modal opens
+  useEffect(() => {
+    if (isOpen && entity) {
+      console.log('AssetManagerModal opened with entity:', {
+        id: entity._id,
+        title: entity.title,
+        assets: entity.assets,
+        selectedLanguage,
+        assetsStructure: entity.assets ? JSON.stringify(entity.assets, null, 2) : 'No assets'
+      });
+    }
+  }, [isOpen, entity, selectedLanguage]);
+
+  const handleAssetUpload = async (language, variant, result) => {
     console.log('Asset uploaded:', { language, variant, result });
+    
+    // Show immediate success feedback
+    toast.success(`${variant} ${assetType} uploaded for ${language.toUpperCase()}`);
+    
+    // Force refresh of the entity data
+    setRefreshKey(prev => prev + 1);
+    
+    // Invalidate React Query cache to trigger refetch
+    queryClient.invalidateQueries(['program', entity?._id]);
+    queryClient.invalidateQueries('programs');
+    
+    // Wait a moment then call parent callback
+    setTimeout(() => {
+      if (onAssetUpdate) {
+        onAssetUpdate();
+      }
+    }, 500);
   };
 
   if (!isOpen || !entity) return null;
@@ -66,11 +101,20 @@ const AssetManagerModal = ({ isOpen, onClose, entity, entityType }) => {
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {variants.map(variant => {
-              const currentAsset = entity.assets?.[assetType + 's']?.[selectedLanguage]?.[variant];
+              // Get the current asset URL from the entity's assets
+              const currentAsset = entity?.assets?.posters?.[selectedLanguage]?.[variant] || 
+                                 entity?.assets?.thumbnails?.[selectedLanguage]?.[variant];
               const isRequired = variant === 'portrait' || variant === 'landscape';
               
+              console.log(`Asset check for ${variant}:`, {
+                selectedLanguage,
+                currentAsset,
+                fullPath: `entity.assets.posters.${selectedLanguage}.${variant}`,
+                assets: entity?.assets
+              });
+              
               return (
-                <div key={variant} className="space-y-2">
+                <div key={`${variant}-${selectedLanguage}-${refreshKey}`} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold text-gray-900 capitalize">
                       {variant}
@@ -79,6 +123,7 @@ const AssetManagerModal = ({ isOpen, onClose, entity, entityType }) => {
                       <span className="text-xs text-red-600 font-medium">Required</span>
                     )}
                   </div>
+                  
                   <AssetUploader
                     entityId={entity._id}
                     entityType={entityType}
@@ -89,6 +134,7 @@ const AssetManagerModal = ({ isOpen, onClose, entity, entityType }) => {
                     onUploadSuccess={(result) => handleAssetUpload(selectedLanguage, variant, result)}
                     className="h-40"
                   />
+                  
                   <p className="text-xs text-gray-500 text-center">
                     {variant === 'portrait' && '3:4 ratio recommended'}
                     {variant === 'landscape' && '16:9 ratio recommended'}
@@ -112,6 +158,19 @@ const AssetManagerModal = ({ isOpen, onClose, entity, entityType }) => {
           </div>
 
           <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200 mt-6">
+            <button
+              onClick={() => {
+                console.log('Manual refresh triggered');
+                setRefreshKey(prev => prev + 1);
+                queryClient.invalidateQueries(['program', entity?._id]);
+                if (onAssetUpdate) {
+                  onAssetUpdate();
+                }
+              }}
+              className="btn-outline"
+            >
+              Refresh
+            </button>
             <button
               onClick={onClose}
               className="btn-primary"

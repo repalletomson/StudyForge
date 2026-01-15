@@ -1,12 +1,15 @@
 FROM node:18-alpine
 
+# Install wget for health checks
+RUN apk add --no-cache wget
+
 # Set working directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install production dependencies only
 RUN npm ci --only=production
 
 # Copy source code
@@ -23,9 +26,9 @@ USER nodejs
 # Expose port
 EXPOSE 3001
 
-# Health check
+# Health check using the health route
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node healthcheck.js
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
 
-# Start the application
+# Start the application in production mode
 CMD ["npm", "start"]

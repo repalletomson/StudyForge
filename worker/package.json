@@ -1,7 +1,7 @@
 {
-  "name": "cms-worker",
+  "name": "studyforge-worker",
   "version": "1.0.0",
-  "description": "CMS Publishing Worker Service",
+  "description": "StudyForge Publishing Worker Service",
   "main": "src/worker.js",
   "scripts": {
     "dev": "nodemon src/worker.js",

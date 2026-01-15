@@ -1,0 +1,221 @@
+/**
+ * Lesson Viewer Modal Component
+ * Displays lesson content (YouTube video or article)
+ */
+import { useState } from 'react';
+import { FiX, FiPlay, FiBookOpen, FiClock, FiDollarSign, FiCalendar } from 'react-icons/fi';
+import YouTubePlayer from '../ui/YouTubePlayer';
+
+const LessonViewerModal = ({ isOpen, onClose, lesson }) => {
+  const [isVideoLoading, setIsVideoLoading] = useState(true);
+
+  if (!isOpen || !lesson) return null;
+
+  // Extract YouTube video ID from URL
+  const extractYouTubeId = (url) => {
+    if (!url) return null;
+    // Enhanced regex to handle more YouTube URL patterns
+    const match = url.match(/(?:youtube\.com\/(?:watch\?.*v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    return match ? match[1] : null;
+  };
+
+  const getContentUrl = () => {
+    const primaryLang = lesson.contentLanguagePrimary || 'en';
+    return lesson.contentUrlsByLanguage?.[primaryLang];
+  };
+
+  const getArticleContent = () => {
+    const primaryLang = lesson.contentLanguagePrimary || 'en';
+    return lesson.articleContentByLanguage?.[primaryLang];
+  };
+
+  const formatDuration = (durationMs) => {
+    if (!durationMs) return null;
+    const minutes = Math.floor(durationMs / 60000);
+    const seconds = Math.floor((durationMs % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'published': return 'bg-green-100 text-green-800';
+      case 'scheduled': return 'bg-yellow-100 text-yellow-800';
+      case 'draft': return 'bg-gray-100 text-gray-800';
+      case 'archived': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        {/* Background overlay */}
+        <div 
+          className="fixed inset-0 transition-opacity bg-black bg-opacity-75 backdrop-blur-sm"
+          onClick={onClose}
+        />
+
+        {/* Modal */}
+        <div className="inline-block w-full max-w-4xl p-0 my-8 overflow-hidden text-left align-middle transition-all transform bg-black shadow-2xl rounded-2xl animate-slide-up border border-gray-800">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-800">
+            <div className="flex items-center space-x-4">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                lesson.contentType === 'video' 
+                  ? 'bg-red-900/50 text-red-400' 
+                  : 'bg-blue-900/50 text-blue-400'
+              }`}>
+                {lesson.contentType === 'video' ? 
+                  <FiPlay className="w-5 h-5" /> : 
+                  <FiBookOpen className="w-5 h-5" />
+                }
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-white font-display">
+                  {lesson.title}
+                </h3>
+                <div className="flex items-center space-x-4 mt-2">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(lesson.status)}`}>
+                    {lesson.status}
+                  </span>
+                  {lesson.durationMs && (
+                    <span className="flex items-center text-sm text-gray-400">
+                      <FiClock className="w-4 h-4 mr-1" />
+                      {formatDuration(lesson.durationMs)}
+                    </span>
+                  )}
+                  {lesson.isPaid && (
+                    <span className="flex items-center text-sm text-yellow-400">
+                      <FiDollarSign className="w-4 h-4 mr-1" />
+                      Paid Content
+                    </span>
+                  )}
+                  {lesson.publishAt && lesson.status === 'scheduled' && (
+                    <span className="flex items-center text-sm text-blue-400">
+                      <FiCalendar className="w-4 h-4 mr-1" />
+                      {new Date(lesson.publishAt).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              <FiX className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="p-6">
+            {lesson.contentType === 'video' ? (
+              <div className="space-y-4">
+                {getContentUrl() ? (
+                  <div className="relative">
+                    {extractYouTubeId(getContentUrl()) ? (
+                      <div className="relative w-full" style={{ paddingBottom: '56.25%' /* 16:9 aspect ratio */ }}>
+                        <div className="absolute inset-0">
+                          <YouTubePlayer
+                            videoId={extractYouTubeId(getContentUrl())}
+                            title={lesson.title}
+                            onReady={() => setIsVideoLoading(false)}
+                            className="w-full h-full"
+                            showTitle={false}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="relative w-full bg-gray-900 rounded-lg" style={{ paddingBottom: '56.25%' }}>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="text-center text-gray-400">
+                            <FiPlay className="w-12 h-12 mx-auto mb-4" />
+                            <p className="text-lg font-medium">Invalid Video URL</p>
+                            <p className="text-sm">Please check the video URL format</p>
+                            <p className="text-xs mt-2 text-gray-500">URL: {getContentUrl()}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="relative w-full bg-gray-900 rounded-lg" style={{ paddingBottom: '56.25%' }}>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center text-gray-400">
+                        <FiPlay className="w-12 h-12 mx-auto mb-4" />
+                        <p className="text-lg font-medium">No Video Content</p>
+                        <p className="text-sm">Video URL not available</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {getArticleContent() ? (
+                  <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                    <div className="prose prose-invert max-w-none">
+                      <div className="text-gray-300 leading-relaxed whitespace-pre-wrap">
+                        {getArticleContent()}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gray-900 rounded-lg p-12 border border-gray-800 text-center">
+                    <FiBookOpen className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                    <p className="text-lg font-medium text-gray-400">No Article Content</p>
+                    <p className="text-sm text-gray-500">Article content not available</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Lesson Info */}
+            {lesson.description && (
+              <div className="mt-6 p-4 bg-gray-900 rounded-lg border border-gray-800">
+                <h4 className="text-sm font-medium text-gray-400 mb-2">Description</h4>
+                <p className="text-gray-300 text-sm leading-relaxed">
+                  {lesson.description}
+                </p>
+              </div>
+            )}
+
+            {/* Languages */}
+            {lesson.contentLanguagesAvailable && lesson.contentLanguagesAvailable.length > 1 && (
+              <div className="mt-4 p-4 bg-gray-900 rounded-lg border border-gray-800">
+                <h4 className="text-sm font-medium text-gray-400 mb-2">Available Languages</h4>
+                <div className="flex flex-wrap gap-2">
+                  {lesson.contentLanguagesAvailable.map((lang) => (
+                    <span 
+                      key={lang} 
+                      className={`px-2 py-1 rounded text-xs font-medium ${
+                        lang === lesson.contentLanguagePrimary 
+                          ? 'bg-blue-900/50 text-blue-400 border border-blue-800' 
+                          : 'bg-gray-800 text-gray-400'
+                      }`}
+                    >
+                      {lang.toUpperCase()}
+                      {lang === lesson.contentLanguagePrimary && ' (Primary)'}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-end px-6 py-4 border-t border-gray-800">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default LessonViewerModal;

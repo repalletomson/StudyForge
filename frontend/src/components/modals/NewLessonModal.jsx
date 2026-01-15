@@ -1,56 +1,155 @@
 /**
- * New Lesson Modal Component
+ * New Lesson Modal Component - Redesigned Layout
  */
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQueryClient } from 'react-query';
-import { FiX, FiPlus, FiPlay, FiBookOpen, FiClock, FiDollarSign } from 'react-icons/fi';
+import { FiX, FiPlus, FiPlay, FiBookOpen, FiCalendar, FiUpload, FiArchive, FiImage } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import * as lessonApi from '../../services/lessonApi';
+import AssetInput from '../ui/AssetInput';
 
 const NewLessonModal = ({ isOpen, onClose, termId }) => {
   const [contentType, setContentType] = useState('video');
-  const [languages, setLanguages] = useState(['en']);
-  const [primaryLanguage, setPrimaryLanguage] = useState('en');
-  
+  const [isPaid, setIsPaid] = useState(false);
+  const [publishAction, setPublishAction] = useState('archive'); // Default to archive
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('');
+  const [assets, setAssets] = useState({
+    portrait: '',
+    landscape: '',
+    banner: ''
+  });
+
   const queryClient = useQueryClient();
-  
+
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
     watch
   } = useForm({
     defaultValues: {
       lessonNumber: 1,
       title: '',
+      description: '',
       contentType: 'video',
       durationMs: '',
-      isPaid: false
+      youtubeUrl: '',
+      articleContent: '',
+      contentLanguagePrimary: 'en',
+      contentLanguagesAvailable: ['en']
     }
   });
 
-  const availableLanguages = [
-    { code: 'en', name: 'English' },
-    { code: 'te', name: 'Telugu' },
-    { code: 'hi', name: 'Hindi' },
-    { code: 'ta', name: 'Tamil' }
-  ];
+  const watchedContentType = watch('contentType');
+  const watchedYoutubeUrl = watch('youtubeUrl');
 
-  // Mock mutation
+  // Fetch existing lessons to calculate next lesson number
+  useEffect(() => {
+    if (isOpen && termId) {
+      const fetchLessons = async () => {
+        try {
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+          const response = await fetch(`${apiUrl}/api/admin/terms/${termId}/lessons`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            const maxLessonNumber = data.lessons.length > 0
+              ? Math.max(...data.lessons.map(l => l.lessonNumber))
+              : 0;
+            const nextNumber = maxLessonNumber + 1;
+            setValue('lessonNumber', nextNumber);
+          }
+        } catch (error) {
+          console.error('Error fetching lessons:', error);
+        }
+      };
+      fetchLessons();
+    }
+  }, [isOpen, termId, setValue]);
+
   const createLessonMutation = useMutation(
-    async (data) => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return { ...data, _id: Math.random().toString(36).substr(2, 9) };
-    },
+    (data) => lessonApi.createLesson(termId, data),
+    {
+      onSuccess: async (newLesson) => {
+        // Save assets if provided
+        const hasAssets = assets.portrait || assets.landscape || assets.banner;
+        if (hasAssets) {
+          try {
+            const assetData = {};
+            if (assets.portrait) assetData.portrait = assets.portrait;
+            if (assets.landscape) assetData.landscape = assets.landscape;
+            if (assets.banner) assetData.banner = assets.banner;
+            
+            await lessonApi.updateLessonAssets(
+              newLesson._id,
+              'en',
+              'thumbnail',
+              assetData
+            );
+          } catch (assetError) {
+            console.error('Failed to save lesson assets:', assetError);
+            toast.error('Lesson created but failed to save assets');
+          }
+        }
+
+        // Handle publishing actions after creation
+        if (publishAction === 'publish') {
+          publishLessonMutation.mutate(newLesson._id);
+        } else if (publishAction === 'schedule') {
+          if (scheduleDate && scheduleTime) {
+            const publishAt = new Date(`${scheduleDate}T${scheduleTime}`);
+            scheduleLessonMutation.mutate({ lessonId: newLesson._id, publishAt: publishAt.toISOString() });
+          }
+        } else {
+          // Archive action - lesson is created as draft and immediately archived
+          queryClient.invalidateQueries(['lessons']);
+          queryClient.invalidateQueries(['terms']);
+          queryClient.invalidateQueries(['programs']);
+          toast.success('Lesson created successfully!');
+          handleClose();
+        }
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || 'Failed to create lesson');
+      }
+    }
+  );
+
+  const publishLessonMutation = useMutation(
+    (lessonId) => lessonApi.publishLesson(lessonId),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries(['program']);
-        toast.success('Lesson created successfully!');
+        queryClient.invalidateQueries(['lessons']);
+        queryClient.invalidateQueries(['terms']);
+        queryClient.invalidateQueries(['programs']);
+        toast.success('Lesson created and published successfully!');
         handleClose();
       },
       onError: (error) => {
-        toast.error('Failed to create lesson');
+        toast.error(error.response?.data?.message || 'Failed to publish lesson');
+      }
+    }
+  );
+
+  const scheduleLessonMutation = useMutation(
+    ({ lessonId, publishAt }) => lessonApi.scheduleLesson(lessonId, publishAt),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['lessons']);
+        queryClient.invalidateQueries(['terms']);
+        queryClient.invalidateQueries(['programs']);
+        toast.success('Lesson created and scheduled successfully!');
+        handleClose();
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || 'Failed to schedule lesson');
       }
     }
   );
@@ -58,306 +157,444 @@ const NewLessonModal = ({ isOpen, onClose, termId }) => {
   const handleClose = () => {
     reset();
     setContentType('video');
-    setLanguages(['en']);
-    setPrimaryLanguage('en');
+    setIsPaid(false);
+    setPublishAction('archive');
+    setScheduleDate('');
+    setScheduleTime('');
+    setAssets({ portrait: '', landscape: '', banner: '' });
     onClose();
   };
 
   const onSubmit = (data) => {
+    // Validate schedule if needed
+    if (publishAction === 'schedule') {
+      if (!scheduleDate || !scheduleTime) {
+        toast.error('Please select both date and time for scheduling');
+        return;
+      }
+      const publishAt = new Date(`${scheduleDate}T${scheduleTime}`);
+      if (publishAt <= new Date()) {
+        toast.error('Schedule time must be in the future');
+        return;
+      }
+    }
+
     const lessonData = {
-      ...data,
-      termId,
       lessonNumber: parseInt(data.lessonNumber),
+      title: data.title,
+      description: data.description || '',
       contentType,
-      durationMs: contentType === 'video' ? parseInt(data.durationMs) * 60000 : null, // Convert minutes to ms
-      contentLanguagePrimary: primaryLanguage,
-      contentLanguagesAvailable: languages,
-      contentUrlsByLanguage: languages.reduce((acc, lang) => {
-        acc[lang] = `https://example.com/content/${data.title.toLowerCase().replace(/\s+/g, '-')}-${lang}`;
-        return acc;
-      }, {})
+      durationMs: data.durationMs ? parseInt(data.durationMs) * 60000 : null,
+      isPaid,
+      contentLanguagePrimary: 'en',
+      contentLanguagesAvailable: ['en'],
+      status: 'draft' // Always create as draft first
     };
+    
+    // Handle content based on type
+    if (contentType === 'video') {
+      lessonData.contentUrlsByLanguage = data.youtubeUrl ? 
+        { en: data.youtubeUrl } : {};
+      lessonData.articleContentByLanguage = {};
+    } else if (contentType === 'article') {
+      lessonData.articleContentByLanguage = data.articleContent ? 
+        { en: data.articleContent } : {};
+      lessonData.contentUrlsByLanguage = {};
+    }
     
     createLessonMutation.mutate(lessonData);
   };
 
-  const addLanguage = (langCode) => {
-    if (!languages.includes(langCode)) {
-      setLanguages(prev => [...prev, langCode]);
-    }
-  };
-
-  const removeLanguage = (langCode) => {
-    if (langCode !== primaryLanguage && languages.length > 1) {
-      setLanguages(prev => prev.filter(lang => lang !== langCode));
-    }
+  // Extract YouTube video ID from URL
+  const extractYouTubeId = (url) => {
+    if (!url) return null;
+    const match = url.match(/(?:youtube\.com\/(?:watch\?.*v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    return match ? match[1] : null;
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+      <div className="flex items-start justify-end min-h-screen">
         {/* Background overlay */}
         <div 
-          className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 backdrop-blur-sm"
+          className="fixed inset-0 transition-opacity bg-black bg-opacity-75 backdrop-blur-sm"
           onClick={handleClose}
         />
 
-        {/* Modal */}
-        <div className="inline-block w-full max-w-2xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-2xl rounded-2xl animate-slide-up">
+        {/* Right-side Modal */}
+        <div className="relative w-full max-w-2xl h-screen overflow-y-auto bg-black shadow-2xl border-l border-gray-800 animate-slide-in-right">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 font-display">
-                Add New Lesson
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Create a new lesson for this term
-              </p>
+          <div className="sticky top-0 z-10 bg-black border-b border-gray-800 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-2xl font-bold text-white font-display">
+                  Add New Lesson
+                </h3>
+                <p className="mt-1 text-sm text-gray-400">
+                  Create a new lesson for this term
+                </p>
+              </div>
+              <button
+                onClick={handleClose}
+                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                <FiX className="w-6 h-6" />
+              </button>
             </div>
-            <button
-              onClick={handleClose}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <FiX className="w-5 h-5" />
-            </button>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Left Column */}
-              <div className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
+            {/* Basic Information */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-semibold text-white border-b border-gray-800 pb-2">Basic Information</h4>
+              
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Lesson Number *</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Lesson Number *</label>
                   <input
                     type="number"
                     min="1"
-                    className={`form-input ${errors.lessonNumber ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-                    placeholder="Enter lesson number"
+                    className={`w-full px-3 py-2 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent ${errors.lessonNumber ? 'border-red-500' : 'border-gray-700'}`}
+                    placeholder="1"
                     {...register('lessonNumber', { 
                       required: 'Lesson number is required',
                       min: { value: 1, message: 'Lesson number must be at least 1' }
                     })}
                   />
                   {errors.lessonNumber && (
-                    <p className="form-error">{errors.lessonNumber.message}</p>
+                    <p className="mt-1 text-sm text-red-400">{errors.lessonNumber.message}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="form-label">Lesson Title *</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Duration (minutes)</label>
                   <input
-                    type="text"
-                    className={`form-input ${errors.title ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-                    placeholder="Enter lesson title"
-                    {...register('title', { 
-                      required: 'Lesson title is required',
-                      minLength: { value: 3, message: 'Title must be at least 3 characters' }
-                    })}
+                    type="number"
+                    min="0"
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                    placeholder="30"
+                    {...register('durationMs')}
                   />
-                  {errors.title && (
-                    <p className="form-error">{errors.title.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="form-label">Content Type *</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label
-                      className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                        contentType === 'video'
-                          ? 'border-primary-300 bg-primary-50 text-primary-900'
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        className="sr-only"
-                        checked={contentType === 'video'}
-                        onChange={() => setContentType('video')}
-                      />
-                      <FiPlay className="w-5 h-5 mr-3" />
-                      <span className="font-medium">Video</span>
-                    </label>
-                    
-                    <label
-                      className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                        contentType === 'article'
-                          ? 'border-primary-300 bg-primary-50 text-primary-900'
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        className="sr-only"
-                        checked={contentType === 'article'}
-                        onChange={() => setContentType('article')}
-                      />
-                      <FiBookOpen className="w-5 h-5 mr-3" />
-                      <span className="font-medium">Article</span>
-                    </label>
-                  </div>
-                </div>
-
-                {contentType === 'video' && (
-                  <div>
-                    <label className="form-label">Duration (minutes) *</label>
-                    <div className="relative">
-                      <FiClock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                      <input
-                        type="number"
-                        min="1"
-                        className={`form-input pl-10 ${errors.durationMs ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-                        placeholder="Enter duration in minutes"
-                        {...register('durationMs', { 
-                          required: contentType === 'video' ? 'Duration is required for videos' : false,
-                          min: { value: 1, message: 'Duration must be at least 1 minute' }
-                        })}
-                      />
-                    </div>
-                    {errors.durationMs && (
-                      <p className="form-error">{errors.durationMs.message}</p>
-                    )}
-                  </div>
-                )}
-
-                <div>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      className="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50"
-                      {...register('isPaid')}
-                    />
-                    <FiDollarSign className="w-4 h-4 ml-2 mr-1 text-yellow-600" />
-                    <span className="text-sm font-medium text-gray-700">Paid Content</span>
-                  </label>
                 </div>
               </div>
 
-              {/* Right Column */}
-              <div className="space-y-4">
-                <div>
-                  <label className="form-label">Primary Content Language *</label>
-                  <select
-                    className="form-input"
-                    value={primaryLanguage}
-                    onChange={(e) => {
-                      setPrimaryLanguage(e.target.value);
-                      if (!languages.includes(e.target.value)) {
-                        setLanguages(prev => [...prev, e.target.value]);
-                      }
-                    }}
-                  >
-                    {availableLanguages.map(lang => (
-                      <option key={lang.code} value={lang.code}>
-                        {lang.name} ({lang.code.toUpperCase()})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Lesson Title *</label>
+                <input
+                  type="text"
+                  className={`w-full px-3 py-2 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent ${errors.title ? 'border-red-500' : 'border-gray-700'}`}
+                  placeholder="Enter lesson title"
+                  {...register('title', { 
+                    required: 'Lesson title is required',
+                    minLength: { value: 3, message: 'Title must be at least 3 characters' }
+                  })}
+                />
+                {errors.title && (
+                  <p className="mt-1 text-sm text-red-400">{errors.title.message}</p>
+                )}
+              </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                <textarea
+                  rows={3}
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
+                  placeholder="Describe the lesson content..."
+                  {...register('description')}
+                />
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="isPaid"
+                  checked={isPaid}
+                  onChange={(e) => setIsPaid(e.target.checked)}
+                  className="w-4 h-4 text-violet-600 bg-gray-800 border-gray-700 rounded focus:ring-violet-500 focus:ring-2"
+                />
+                <label htmlFor="isPaid" className="ml-3 text-sm text-gray-300">
+                  💰 This is a paid lesson
+                </label>
+              </div>
+            </div>
+
+            {/* Content Type */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-semibold text-white border-b border-gray-800 pb-2">Content Type</h4>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <label className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                  contentType === 'video'
+                    ? 'border-red-500 bg-red-900/20 text-red-400'
+                    : 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/50 text-gray-300'
+                }`}>
+                  <input
+                    type="radio"
+                    name="contentType"
+                    value="video"
+                    checked={contentType === 'video'}
+                    onChange={(e) => {
+                      setContentType(e.target.value);
+                      setValue('contentType', e.target.value);
+                    }}
+                    className="sr-only"
+                  />
+                  <FiPlay className="w-5 h-5 mr-3" />
+                  <div>
+                    <div className="font-medium">Video</div>
+                    <div className="text-xs opacity-75">YouTube video</div>
+                  </div>
+                </label>
+
+                <label className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                  contentType === 'article'
+                    ? 'border-violet-500 bg-violet-900/20 text-violet-400'
+                    : 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/50 text-gray-300'
+                }`}>
+                  <input
+                    type="radio"
+                    name="contentType"
+                    value="article"
+                    checked={contentType === 'article'}
+                    onChange={(e) => {
+                      setContentType(e.target.value);
+                      setValue('contentType', e.target.value);
+                    }}
+                    className="sr-only"
+                  />
+                  <FiBookOpen className="w-5 h-5 mr-3" />
+                  <div>
+                    <div className="font-medium">Article</div>
+                    <div className="text-xs opacity-75">Text content</div>
+                  </div>
+                </label>
+              </div>
+
+              {/* Content Input */}
+              {watchedContentType === 'video' ? (
                 <div>
-                  <label className="form-label">Available Languages</label>
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {languages.map(langCode => {
-                      const lang = availableLanguages.find(l => l.code === langCode);
-                      return (
-                        <span
-                          key={langCode}
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                            langCode === primaryLanguage
-                              ? 'bg-primary-100 text-primary-800 border border-primary-300'
-                              : 'bg-gray-100 text-gray-800 border border-gray-300'
-                          }`}
-                        >
-                          {lang?.name}
-                          {langCode === primaryLanguage && (
-                            <span className="ml-1 text-xs">(Primary)</span>
-                          )}
-                          {langCode !== primaryLanguage && languages.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removeLanguage(langCode)}
-                              className="ml-2 text-gray-500 hover:text-red-500"
-                            >
-                              <FiX className="w-3 h-3" />
-                            </button>
-                          )}
-                        </span>
-                      );
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <FiPlay className="inline w-4 h-4 mr-2" />
+                    YouTube Video URL
+                  </label>
+                  <input
+                    type="url"
+                    className={`w-full px-3 py-2 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent ${errors.youtubeUrl ? 'border-red-500' : 'border-gray-700'}`}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    {...register('youtubeUrl', {
+                      pattern: {
+                        value: /^(https?:\/\/)?(www\.)?(youtube\.com\/(?:watch\?.*v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+                        message: 'Please enter a valid YouTube URL'
+                      }
                     })}
-                  </div>
-                  
-                  <select
-                    className="form-input"
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        addLanguage(e.target.value);
-                        e.target.value = '';
-                      }
-                    }}
-                  >
-                    <option value="">Add a language...</option>
-                    {availableLanguages
-                      .filter(lang => !languages.includes(lang.code))
-                      .map(lang => (
-                        <option key={lang.code} value={lang.code}>
-                          {lang.name}
-                        </option>
-                      ))}
-                  </select>
+                  />
+                  {errors.youtubeUrl && (
+                    <p className="mt-1 text-sm text-red-400">{errors.youtubeUrl.message}</p>
+                  )}
+                  {watchedYoutubeUrl && extractYouTubeId(watchedYoutubeUrl) && (
+                    <div className="mt-3 p-3 bg-gray-900 rounded-lg border border-gray-700">
+                      <p className="text-sm text-green-400 mb-2">✓ Valid YouTube video detected</p>
+                      <div className="aspect-video bg-gray-800 rounded-lg overflow-hidden">
+                        <iframe
+                          src={`https://www.youtube.com/embed/${extractYouTubeId(watchedYoutubeUrl)}`}
+                          className="w-full h-full"
+                          frameBorder="0"
+                          allowFullScreen
+                          title="YouTube Preview"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <FiBookOpen className="inline w-4 h-4 mr-2" />
+                    Article Content
+                  </label>
+                  <textarea
+                    rows={8}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
+                    placeholder="Write your article content here..."
+                    {...register('articleContent')}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Media Assets */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-semibold text-white border-b border-gray-800 pb-2">
+                <FiImage className="inline w-5 h-5 mr-2" />
+                Lesson Media
+              </h4>
+              
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Portrait Thumbnail</label>
+                  <AssetInput
+                    value={assets.portrait}
+                    onChange={(value) => setAssets(prev => ({ ...prev, portrait: value }))}
+                    placeholder="https://example.com/portrait.jpg"
+                    aspectRatio="3:4"
+                    compact={true}
+                    className="w-full"
+                  />
+                  {assets.portrait && (
+                    <div className="mt-1">
+                      <img 
+                        src={assets.portrait} 
+                        alt="Portrait preview" 
+                        className="w-6 h-8 object-cover rounded border border-gray-700"
+                        onError={(e) => e.target.style.display = 'none'}
+                      />
+                    </div>
+                  )}
                 </div>
 
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">Content URLs</h4>
-                  <p className="text-xs text-gray-600 mb-3">
-                    Content URLs will be automatically generated based on the lesson title and selected languages.
-                  </p>
-                  <div className="space-y-2">
-                    {languages.map(lang => (
-                      <div key={lang} className="flex items-center text-xs">
-                        <span className="w-8 text-gray-500">{lang.toUpperCase()}:</span>
-                        <span className="text-gray-600 truncate">
-                          https://example.com/content/lesson-{lang}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Landscape Thumbnail</label>
+                  <AssetInput
+                    value={assets.landscape}
+                    onChange={(value) => setAssets(prev => ({ ...prev, landscape: value }))}
+                    placeholder="https://example.com/landscape.jpg"
+                    aspectRatio="16:9"
+                    compact={true}
+                    className="w-full"
+                  />
+                  {assets.landscape && (
+                    <div className="mt-1">
+                      <img 
+                        src={assets.landscape} 
+                        alt="Landscape preview" 
+                        className="w-8 h-5 object-cover rounded border border-gray-700"
+                        onError={(e) => e.target.style.display = 'none'}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Banner Image</label>
+                  <AssetInput
+                    value={assets.banner}
+                    onChange={(value) => setAssets(prev => ({ ...prev, banner: value }))}
+                    placeholder="https://example.com/banner.jpg"
+                    aspectRatio="16:9"
+                    compact={true}
+                    className="w-full"
+                  />
+                  {assets.banner && (
+                    <div className="mt-1">
+                      <img 
+                        src={assets.banner} 
+                        alt="Banner preview" 
+                        className="w-8 h-5 object-cover rounded border border-gray-700"
+                        onError={(e) => e.target.style.display = 'none'}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
+            {/* Publishing Options */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-semibold text-white border-b border-gray-800 pb-2">Publishing</h4>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Action</label>
+                <select
+                  value={publishAction}
+                  onChange={(e) => setPublishAction(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                >
+                  <option value="archive">Archive (Save as draft)</option>
+                  <option value="publish">Publish Now</option>
+                  <option value="schedule">Schedule for Later</option>
+                </select>
+              </div>
+
+              {publishAction === 'schedule' && (
+                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Date</label>
+                    <input
+                      type="date"
+                      value={scheduleDate}
+                      onChange={(e) => setScheduleDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Time</label>
+                    <input
+                      type="time"
+                      value={scheduleTime}
+                      onChange={(e) => setScheduleTime(e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Footer */}
-            <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="btn-outline"
-                disabled={createLessonMutation.isLoading}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn-primary"
-                disabled={createLessonMutation.isLoading}
-              >
-                {createLessonMutation.isLoading ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <FiPlus className="w-4 h-4 mr-2" />
-                    Create Lesson
-                  </>
-                )}
-              </button>
+            <div className="sticky bottom-0 bg-black border-t border-gray-800 pt-6 -mx-6 px-6 pb-6">
+              <div className="flex items-center justify-end space-x-4">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="inline-flex items-center px-4 py-2 border border-gray-700 text-sm font-medium rounded-md text-gray-300 bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
+                  disabled={createLessonMutation.isLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    publishAction === 'publish' 
+                      ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' 
+                      : publishAction === 'schedule'
+                      ? 'bg-violet-600 hover:bg-violet-700 focus:ring-violet-500'
+                      : 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-500'
+                  }`}
+                  disabled={createLessonMutation.isLoading || publishLessonMutation.isLoading || scheduleLessonMutation.isLoading}
+                >
+                  {(createLessonMutation.isLoading || publishLessonMutation.isLoading || scheduleLessonMutation.isLoading) ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      {publishAction === 'publish' ? 'Publishing...' : publishAction === 'schedule' ? 'Scheduling...' : 'Creating...'}
+                    </>
+                  ) : (
+                    <>
+                      {publishAction === 'publish' ? (
+                        <>
+                          <FiUpload className="w-4 h-4 mr-2" />
+                          Publish Now
+                        </>
+                      ) : publishAction === 'schedule' ? (
+                        <>
+                          <FiCalendar className="w-4 h-4 mr-2" />
+                          Schedule Lesson
+                        </>
+                      ) : (
+                        <>
+                          <FiArchive className="w-4 h-4 mr-2" />
+                          Create Lesson
+                        </>
+                      )}
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </form>
         </div>

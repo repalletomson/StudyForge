@@ -26,25 +26,25 @@ const LoginPage = () => {
   };
 
   const demoCredentials = [
-    { role: 'Admin', email: 'admin@example.com', icon: FiShield, color: 'from-red-500 to-red-600' },
-    { role: 'Editor', email: 'editor@example.com', icon: FiUser, color: 'from-blue-500 to-blue-600' },
-    { role: 'Viewer', email: 'viewer@example.com', icon: FiEyeIcon, color: 'from-gray-500 to-gray-600' }
+    { role: 'Admin', email: 'admin@example.com', password: 'admin123', icon: FiShield, color: 'from-red-500 to-red-600' },
+    { role: 'Editor', email: 'editor@example.com', password: 'editor123', icon: FiUser, color: 'from-violet-500 to-purple-600' },
+    { role: 'Viewer', email: 'viewer@example.com', password: 'viewer123', icon: FiEyeIcon, color: 'from-green-500 to-green-600' }
   ];
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-purple-950 to-violet-950 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 animate-fade-in">
         {/* Header */}
-        <div className="text-center">
-          <div className="mx-auto h-16 w-16 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center mb-6 shadow-lg">
-            <FiShield className="h-8 w-8 text-white" />
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900 font-display">
-            Welcome Back
+       <div className="text-center">
+          {/* <div className="mx-auto h-16 w-16 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 flex items-center justify-center mb-6 shadow-lg shadow-violet-600/20"> */}
+            {/* <span className="text-white text-2xl">🎓</span> */}
+          {/* </div> */} 
+          <h2 className="text-3xl font-bold text-white font-heading">
+            StudyForge
           </h2>
-          <p className="mt-2 text-gray-600">
-            Sign in to your CMS Admin account
-          </p>
+          {/* <p className="mt-2 text-slate-400">
+            Educational Content Management
+          </p> */}
         </div>
         
         {/* Login Form */}
@@ -53,18 +53,18 @@ const LoginPage = () => {
             <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
               <div>
                 <label htmlFor="email" className="form-label">
-                  Email Address
+                  Username
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FiMail className="h-5 w-5 text-gray-400" />
+                    <FiMail className="h-5 w-5 text-slate-400" />
                   </div>
                   <input
                     id="email"
                     type="email"
                     autoComplete="email"
-                    className={`form-input pl-10 ${errors.email ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-                    placeholder="Enter your email"
+                    className={`form-input pl-10 ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
+                    placeholder="Enter your username"
                     {...register('email', {
                       required: 'Email is required',
                       pattern: {
@@ -85,13 +85,13 @@ const LoginPage = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FiLock className="h-5 w-5 text-gray-400" />
+                    <FiLock className="h-5 w-5 text-slate-400" />
                   </div>
                   <input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
-                    className={`form-input pl-10 pr-10 ${errors.password ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                    className={`form-input pl-10 pr-10 ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                     placeholder="Enter your password"
                     {...register('password', {
                       required: 'Password is required',
@@ -107,9 +107,9 @@ const LoginPage = () => {
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <FiEyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <FiEyeOff className="h-5 w-5 text-slate-400 hover:text-slate-300" />
                     ) : (
-                      <FiEye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <FiEye className="h-5 w-5 text-slate-400 hover:text-slate-300" />
                     )}
                   </button>
                 </div>
@@ -130,18 +130,21 @@ const LoginPage = () => {
                       <span className="ml-2">Signing in...</span>
                     </div>
                   ) : (
-                    'Sign In'
+                    <>
+                      <span className="mr-2">→</span>
+                      Sign In
+                    </>
                   )}
                 </button>
               </div>
               <div className="text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-slate-400">
               Don't have an account?{' '}
               <Link
                 to="/signup"
-                className="font-medium text-blue-600 hover:text-blue-500 transition-colors"
+                className="font-medium text-violet-400 hover:text-violet-300 transition-colors"
               >
-                Sign up here
+                ✨ Sign Up
               </Link>
             </p>
           </div>
@@ -152,8 +155,8 @@ const LoginPage = () => {
         {/* Demo Credentials */}
         <div className="card">
           <div className="card-header">
-            <h3 className="text-lg font-semibold text-gray-900 font-display">Demo Credentials</h3>
-            <p className="text-sm text-gray-600">Use these credentials to explore the system</p>
+            <h3 className="text-lg font-semibold text-slate-100 font-heading">Demo Credentials</h3>
+            <p className="text-sm text-slate-400">Use these credentials to explore the system</p>
           </div>
           <div className="card-body">
             <div className="space-y-3">
@@ -162,30 +165,30 @@ const LoginPage = () => {
                 return (
                   <div
                     key={cred.role}
-                    className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all cursor-pointer"
+                    className="flex items-center justify-between p-3 rounded-lg border border-slate-700 hover:border-violet-500/50 hover:bg-slate-800/50 transition-all cursor-pointer group"
                     onClick={() => {
                       document.getElementById('email').value = cred.email;
-                      document.getElementById('password').value = 'password123';
+                      document.getElementById('password').value = cred.password;
                     }}
                   >
                     <div className="flex items-center">
-                      <div className={`w-8 h-8 rounded-lg bg-gradient-to-r ${cred.color} flex items-center justify-center mr-3`}>
+                      <div className={`w-8 h-8 rounded-lg bg-gradient-to-r ${cred.color} flex items-center justify-center mr-3 shadow-lg`}>
                         <Icon className="h-4 w-4 text-white" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">{cred.role}</p>
-                        <p className="text-xs text-gray-500">{cred.email}</p>
+                        <p className="text-sm font-semibold text-slate-200 group-hover:text-white">{cred.role}</p>
+                        <p className="text-xs text-slate-400">{cred.email}</p>
                       </div>
                     </div>
-                    <div className="text-xs text-gray-400">
-                      password123
+                    <div className="text-xs text-slate-500 group-hover:text-slate-400">
+                      {cred.password}
                     </div>
                   </div>
                 );
               })}
             </div>
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-xs text-blue-800">
+            <div className="mt-4 p-3 bg-violet-500/10 rounded-lg border border-violet-500/20">
+              <p className="text-xs text-violet-300">
                 <strong>Tip:</strong> Click on any credential above to auto-fill the form
               </p>
             </div>

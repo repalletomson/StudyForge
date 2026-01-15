@@ -148,10 +148,64 @@ const deleteTerm = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/admin/terms/:id/close
+ * Close term (hide lessons)
+ */
+const closeTerm = async (req, res, next) => {
+  try {
+    const term = await Term.findById(req.params.id);
+    if (!term) {
+      throw createError('Term not found', 404, 'RESOURCE_NOT_FOUND');
+    }
+
+    await term.close();
+
+    logger.info('Term closed', {
+      termId: term._id,
+      userId: req.user._id,
+      correlationId: req.correlationId
+    });
+
+    res.json(term);
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/admin/terms/:id/open
+ * Open term (show lessons)
+ */
+const openTerm = async (req, res, next) => {
+  try {
+    const term = await Term.findById(req.params.id);
+    if (!term) {
+      throw createError('Term not found', 404, 'RESOURCE_NOT_FOUND');
+    }
+
+    await term.open();
+
+    logger.info('Term opened', {
+      termId: term._id,
+      userId: req.user._id,
+      correlationId: req.correlationId
+    });
+
+    res.json(term);
+
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getTerms,
   createTerm,
   getTerm,
   updateTerm,
-  deleteTerm
+  deleteTerm,
+  closeTerm,
+  openTerm
 };

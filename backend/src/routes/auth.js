@@ -26,14 +26,16 @@ const createError = (message, statusCode = 500, code = "APPLICATION_ERROR") => {
  * @returns {string}
  */
 const generateToken = (user) => {
+  const jwtSecret = process.env.JWT_SECRET || "temporary-jwt-secret-for-development-only";
+  
   return jwt.sign(
     {
       userId: user._id,
       email: user.email,
       role: user.role,
     },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
+    jwtSecret,
+    { expiresIn: process.env.JWT_EXPIRES_IN || "24h" }
   );
 };
 
@@ -203,69 +205,73 @@ router.put(
  * POST /api/auth/login
  * User login
  */
-router.post("/login", async (req, res, next) => {
-  try {
-    console.log("=== LOGIN REQUEST DEBUG ===");
-    console.log("Raw request body:", JSON.stringify(req.body));
-    console.log("Content-Type:", req.headers["content-type"]);
-    console.log("Body type:", typeof req.body);
+router.post(
+  "/login",
+  [
+    body("email")
+      .isEmail()
+      .normalizeEmail()
+      .withMessage("Valid email is required"),
+    body("password")
+      .isLength({ min: 1 })
+      .withMessage("Password is required"),
+  ],
+  async (req, res, next) => {
+    try {
+      // Check validation errors
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+      }
 
-    const { email, password } = req.body;
+      const { email, password } = req.body;
 
-    console.log("Extracted email:", JSON.stringify(email));
-    console.log("Extracted password:", password ? "[HIDDEN]" : "undefined");
-    console.log("Email type:", typeof email);
-    console.log("Password type:", typeof password);
+      // Find user
+      const user = await User.findOne({ email, isActive: true });
+      if (!user) {
+        throw createError("Invalid credentials", 401, "INVALID_CREDENTIALS");
+      }
 
-    if (!email || !password) {
-      console.log("Missing email or password");
-      return res.status(400).json({ message: "Email and password required" });
-    }
+      // Check password
+      const isPasswordValid = await user.comparePassword(password);
+      if (!isPasswordValid) {
+        throw createError("Invalid credentials", 401, "INVALID_CREDENTIALS");
+      }
 
-    // Find user
-    const user = await User.findOne({ email, isActive: true });
-    if (!user) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
+      // Update last login
+      await user.updateLastLogin();
 
-    // Check password
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
+      // Generate token
+      const token = generateToken(user);
 
-    console.log("JWT_SECRET exists:", !!process.env.JWT_SECRET);
-    console.log("JWT_SECRET length:", process.env.JWT_SECRET?.length);
-
-    // Use fallback JWT_SECRET if not loaded from env
-    const jwtSecret =
-      process.env.JWT_SECRET || "temporary-jwt-secret-for-testing";
-    console.log("Using JWT_SECRET:", jwtSecret.substring(0, 10) + "...");
-
-    // Generate token
-    const token = jwt.sign(
-      {
+      logger.info("User logged in successfully", {
         userId: user._id,
         email: user.email,
         role: user.role,
-      },
-      jwtSecret,
-      { expiresIn: "15m" }
-    );
+        correlationId: req.correlationId,
+      });
 
-    res.json({
-      token,
-      user: {
-        id: user._id,
-        email: user.email,
-        role: user.role,
-      },
-    });
-  } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ message: "Internal server error" });
+      res.json({
+        message: "Login successful",
+        token,
+        user: {
+          id: user._id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          fullName: user.fullName,
+          role: user.role,
+          lastLoginAt: user.lastLoginAt,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
 /**
  * POST /api/auth/logout

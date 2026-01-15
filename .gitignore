@@ -112,3 +112,31 @@ uploads/
 *.pem
 *.key
 *.crt
+# Development and testing files
+test-*.js
+*-test.js
+check-*.js
+fix-*.js
+setup-*.js
+*IMPLEMENTATION*.md
+*SUMMARY*.md
+*FIX*.md
+*GUIDE*.md
+*COMPLETE*.md
+*DEBUG*.md
+deploy.js
+
+# Development docker files
+docker-compose.override.yml
+docker-compose.simple.yml
+
+# Development folders and files
+Study-Forge-Landing/
+.kiro/
+logs/
+backend/logs/
+*.audit.json
+
+# Production exclusions
+package-lock.json
+package.json

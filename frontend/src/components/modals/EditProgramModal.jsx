@@ -7,11 +7,13 @@ import { useMutation, useQueryClient } from 'react-query';
 import { FiX, FiSave, FiUpload } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import * as programApi from '../../services/programApi';
+import AssetManagerModal from './AssetManagerModal';
 
-const EditProgramModal = ({ isOpen, onClose, program }) => {
+const EditProgramModal = ({ isOpen, onClose, program, onProgramUpdate }) => {
   const [selectedTopics, setSelectedTopics] = useState([]);
   const [languages, setLanguages] = useState(['en']);
   const [primaryLanguage, setPrimaryLanguage] = useState('en');
+  const [isAssetManagerOpen, setIsAssetManagerOpen] = useState(false);
   
   const queryClient = useQueryClient();
   
@@ -23,7 +25,7 @@ const EditProgramModal = ({ isOpen, onClose, program }) => {
     setValue
   } = useForm();
 
-  // Mock topics data
+  // Available topics
   const availableTopics = [
     { _id: '1', name: 'Mathematics' },
     { _id: '2', name: 'Science' },
@@ -65,7 +67,7 @@ const EditProgramModal = ({ isOpen, onClose, program }) => {
       onSuccess: () => {
         queryClient.invalidateQueries(['program', program._id]);
         queryClient.invalidateQueries('programs');
-        toast.success('Program updated successfully!');
+        toast.success('Program updated successfully');
         handleClose();
       },
       onError: (error) => {
@@ -79,7 +81,23 @@ const EditProgramModal = ({ isOpen, onClose, program }) => {
     setSelectedTopics([]);
     setLanguages(['en']);
     setPrimaryLanguage('en');
+    setIsAssetManagerOpen(false);
     onClose();
+  };
+
+  const handleManageAssets = () => {
+    setIsAssetManagerOpen(true);
+  };
+
+  const handleAssetUpdate = () => {
+    // Refresh program data when assets are updated
+    queryClient.invalidateQueries(['program', program._id]);
+    queryClient.invalidateQueries('programs');
+    
+    // Call parent callback to update program detail page
+    if (onProgramUpdate) {
+      onProgramUpdate();
+    }
   };
 
   const onSubmit = (data) => {
@@ -127,25 +145,25 @@ const EditProgramModal = ({ isOpen, onClose, program }) => {
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         {/* Background overlay */}
         <div 
-          className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 backdrop-blur-sm"
+          className="fixed inset-0 transition-opacity bg-slate-900/75 backdrop-blur-sm"
           onClick={handleClose}
         />
 
         {/* Modal */}
-        <div className="inline-block w-full max-w-4xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-2xl rounded-2xl animate-slide-up">
+        <div className="inline-block w-full max-w-4xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-slate-900 shadow-2xl rounded-2xl animate-slide-up border border-slate-800">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-2xl font-bold text-gray-900 font-display">
+              <h3 className="text-2xl font-bold text-slate-100 font-heading">
                 Edit Program
               </h3>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-slate-400">
                 Update program information and settings
               </p>
             </div>
             <button
               onClick={handleClose}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
             >
               <FiX className="w-6 h-6" />
             </button>
@@ -158,14 +176,14 @@ const EditProgramModal = ({ isOpen, onClose, program }) => {
                 {/* Basic Information */}
                 <div className="card">
                   <div className="card-header">
-                    <h4 className="text-lg font-semibold text-gray-900">Basic Information</h4>
+                    <h4 className="text-lg font-semibold text-slate-100">Basic Information</h4>
                   </div>
                   <div className="card-body space-y-4">
                     <div>
-                      <label className="form-label">Program Title *</label>
+                      <label className="form-label">Program Title</label>
                       <input
                         type="text"
-                        className={`form-input ${errors.title ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                        className={`form-input ${errors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                         placeholder="Enter program title"
                         {...register('title', { 
                           required: 'Program title is required',
@@ -204,11 +222,11 @@ const EditProgramModal = ({ isOpen, onClose, program }) => {
                 {/* Language Settings */}
                 <div className="card">
                   <div className="card-header">
-                    <h4 className="text-lg font-semibold text-gray-900">Language Settings</h4>
+                    <h4 className="text-lg font-semibold text-slate-100">Language Settings</h4>
                   </div>
                   <div className="card-body space-y-4">
                     <div>
-                      <label className="form-label">Primary Language *</label>
+                      <label className="form-label">Primary Language</label>
                       <select
                         className="form-input"
                         value={primaryLanguage}
@@ -232,8 +250,8 @@ const EditProgramModal = ({ isOpen, onClose, program }) => {
                               key={langCode}
                               className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                                 langCode === primaryLanguage
-                                  ? 'bg-primary-100 text-primary-800 border border-primary-300'
-                                  : 'bg-gray-100 text-gray-800 border border-gray-300'
+                                  ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                                  : 'bg-slate-700 text-slate-300 border border-slate-600'
                               }`}
                             >
                               {lang?.name}
@@ -244,7 +262,7 @@ const EditProgramModal = ({ isOpen, onClose, program }) => {
                                 <button
                                   type="button"
                                   onClick={() => removeLanguage(langCode)}
-                                  className="ml-2 text-gray-500 hover:text-red-500"
+                                  className="ml-2 text-slate-400 hover:text-red-400"
                                 >
                                   <FiX className="w-3 h-3" />
                                 </button>
@@ -282,7 +300,7 @@ const EditProgramModal = ({ isOpen, onClose, program }) => {
                 {/* Topics */}
                 <div className="card">
                   <div className="card-header">
-                    <h4 className="text-lg font-semibold text-gray-900">Topics & Categories</h4>
+                    <h4 className="text-lg font-semibold text-slate-100">Topics & Categories</h4>
                   </div>
                   <div className="card-body">
                     <label className="form-label">Select Topics</label>
@@ -290,10 +308,10 @@ const EditProgramModal = ({ isOpen, onClose, program }) => {
                       {availableTopics.map(topic => (
                         <label
                           key={topic._id}
-                          className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                          className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${
                             selectedTopics.includes(topic._id)
-                              ? 'border-primary-300 bg-primary-50 text-primary-900'
-                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                              ? 'border-violet-500/50 bg-violet-500/10 text-violet-300'
+                              : 'border-slate-700 hover:border-slate-600 hover:bg-slate-800/50'
                           }`}
                         >
                           <input
@@ -302,10 +320,10 @@ const EditProgramModal = ({ isOpen, onClose, program }) => {
                             checked={selectedTopics.includes(topic._id)}
                             onChange={() => toggleTopic(topic._id)}
                           />
-                          <div className={`w-4 h-4 rounded border-2 mr-3 flex items-center justify-center ${
+                          <div className={`w-4 h-4 rounded border mr-3 flex items-center justify-center ${
                             selectedTopics.includes(topic._id)
-                              ? 'border-primary-500 bg-primary-500'
-                              : 'border-gray-300'
+                              ? 'border-violet-500 bg-violet-500'
+                              : 'border-slate-600'
                           }`}>
                             {selectedTopics.includes(topic._id) && (
                               <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -323,51 +341,82 @@ const EditProgramModal = ({ isOpen, onClose, program }) => {
                 {/* Current Assets */}
                 <div className="card">
                   <div className="card-header">
-                    <h4 className="text-lg font-semibold text-gray-900">Current Assets</h4>
+                    <h4 className="text-lg font-semibold text-slate-100">Program Images</h4>
                   </div>
                   <div className="card-body">
                     <div className="grid grid-cols-2 gap-4">
-                      {program.assets?.posters?.[program.languagePrimary] && (
-                        <>
-                          {program.assets.posters[program.languagePrimary].portrait && (
-                            <div>
-                              <p className="text-xs text-gray-500 mb-2">Portrait</p>
-                              <img
-                                src={program.assets.posters[program.languagePrimary].portrait}
-                                alt="Portrait poster"
-                                className="w-full h-24 object-cover rounded-lg border"
-                              />
+                      {/* Portrait */}
+                      <div>
+                        <p className="text-xs text-slate-400 mb-2">Portrait</p>
+                        {program?.assets?.posters?.[program.languagePrimary]?.portrait ? (
+                          <div className="relative">
+                            <img
+                              src={program.assets.posters[program.languagePrimary].portrait}
+                              alt="Portrait poster"
+                              className="w-full h-24 object-cover rounded-lg border border-emerald-500/50"
+                            />
+                            <div className="absolute top-1 right-1">
+                              <span className="px-1 py-0.5 bg-emerald-500 text-white text-xs rounded">
+                                ✓
+                              </span>
                             </div>
-                          )}
-                          {program.assets.posters[program.languagePrimary].landscape && (
-                            <div>
-                              <p className="text-xs text-gray-500 mb-2">Landscape</p>
-                              <img
-                                src={program.assets.posters[program.languagePrimary].landscape}
-                                alt="Landscape poster"
-                                className="w-full h-24 object-cover rounded-lg border"
-                              />
+                          </div>
+                        ) : (
+                          <div className="w-full h-24 bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg flex items-center justify-center text-slate-400 border border-slate-700">
+                            <div className="text-center">
+                              <div className="text-lg mb-1">📱</div>
+                              <div className="text-xs opacity-90">Portrait</div>
                             </div>
-                          )}
-                        </>
-                      )}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Landscape */}
+                      <div>
+                        <p className="text-xs text-slate-400 mb-2">Landscape</p>
+                        {program?.assets?.posters?.[program.languagePrimary]?.landscape ? (
+                          <div className="relative">
+                            <img
+                              src={program.assets.posters[program.languagePrimary].landscape}
+                              alt="Landscape poster"
+                              className="w-full h-24 object-cover rounded-lg border border-emerald-500/50"
+                            />
+                            <div className="absolute top-1 right-1">
+                              <span className="px-1 py-0.5 bg-emerald-500 text-white text-xs rounded">
+                                ✓
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-full h-24 bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg flex items-center justify-center text-slate-400 border border-slate-700">
+                            <div className="text-center">
+                              <div className="text-lg mb-1">🖥️</div>
+                              <div className="text-xs opacity-90">Landscape</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="mt-4 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
-                      <FiUpload className="mx-auto h-8 w-8 text-gray-400" />
-                      <p className="text-sm text-gray-600 mt-2">
-                        Upload new assets
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        (Feature coming soon)
-                      </p>
-                    </div>
+                    
+                    <button
+                      type="button"
+                      onClick={() => handleManageAssets && handleManageAssets()}
+                      className="w-full mt-4 btn-primary"
+                    >
+                      <FiUpload className="w-4 h-4 mr-2" />
+                      Upload Program Images
+                    </button>
+                    
+                    <p className="text-xs text-slate-500 mt-2 text-center">
+                      Portrait and landscape images are required for publishing
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+            <div className="flex items-center justify-end space-x-4 pt-6 border-t border-slate-800">
               <button
                 type="button"
                 onClick={handleClose}
@@ -400,6 +449,15 @@ const EditProgramModal = ({ isOpen, onClose, program }) => {
           </form>
         </div>
       </div>
+
+      {/* Asset Manager Modal */}
+      <AssetManagerModal 
+        isOpen={isAssetManagerOpen}
+        onClose={() => setIsAssetManagerOpen(false)}
+        entity={program}
+        entityType="program"
+        onAssetUpdate={handleAssetUpdate}
+      />
     </div>
   );
 };

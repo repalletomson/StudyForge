@@ -1,18 +1,18 @@
 /**
  * Programs page component with enhanced UI
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from 'react-query';
-import { FiPlus, FiSearch, FiFilter, FiEye, FiEdit3, FiTrash2, FiUsers, FiBookOpen, FiClock } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiEye, FiEdit3, FiUsers, FiBookOpen, FiClock, FiPlay } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import * as programApi from '../services/programApi';
+import * as topicApi from '../services/topicApi';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import NewProgramModal from '../components/modals/NewProgramModal';
+import ResponsiveImage from '../components/ui/ResponsiveImage';
 
 const ProgramsPage = () => {
   const { hasPermission } = useAuth();
-  const [isNewProgramModalOpen, setIsNewProgramModalOpen] = useState(false);
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -24,9 +24,25 @@ const ProgramsPage = () => {
     ['programs', filters],
     () => programApi.getPrograms(filters),
     {
-      keepPreviousData: true
+      keepPreviousData: true,
+      refetchInterval: 15000, // Refetch every 15 seconds for real-time updates
+      refetchOnWindowFocus: true,
+      staleTime: 5000 // Consider data stale after 5 seconds
     }
   );
+
+  // Fetch topics for filtering
+  const { data: topicsData, isLoading: topicsLoading } = useQuery(
+    'topics',
+    topicApi.getTopics,
+    {
+      onError: (error) => {
+        console.error('Failed to fetch topics:', error);
+      }
+    }
+  );
+
+  const availableTopics = topicsData?.topics || [];
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -34,17 +50,19 @@ const ProgramsPage = () => {
 
   const getStatusBadge = (status) => {
     const badges = {
-      draft: 'badge-gray',
-      published: 'badge-success',
-      archived: 'badge-danger'
+      draft: 'bg-gray-800 text-gray-300',
+      scheduled: 'bg-yellow-900/50 text-yellow-400',
+      published: 'bg-green-900/50 text-green-400',
+      archived: 'bg-red-900/50 text-red-400'
     };
-    return badges[status] || 'badge-gray';
+    return badges[status] || 'bg-gray-800 text-gray-300';
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
       case 'published': return '🟢';
-      case 'draft': return '🟡';
+      case 'scheduled': return '🟡';
+      case 'draft': return '⚪';
       case 'archived': return '🔴';
       default: return '⚪';
     }
@@ -77,20 +95,20 @@ const ProgramsPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 font-display">Programs</h1>
-          <p className="mt-2 text-gray-600">
-            Manage your educational programs and content
+          <h1 className="text-3xl font-bold text-slate-100 font-heading">Programs</h1>
+          <p className="mt-2 text-slate-400">
+            Manage your educational programs and curriculum
           </p>
         </div>
         {hasPermission('write') && (
           <div className="mt-4 sm:mt-0">
-            <button 
-              onClick={() => setIsNewProgramModalOpen(true)}
+            <Link 
+              to="/dashboard/programs/new"
               className="btn-primary btn-lg"
             >
               <FiPlus className="h-5 w-5 mr-2" />
               New Program
-            </button>
+            </Link>
           </div>
         )}
       </div>
@@ -101,13 +119,13 @@ const ProgramsPage = () => {
           <div className="card-body">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center">
-                  <FiBookOpen className="w-5 h-5 text-primary-600" />
+                <div className="w-8 h-8 bg-violet-500/20 rounded-lg flex items-center justify-center">
+                  <FiBookOpen className="w-5 h-5 text-violet-400" />
                 </div>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Programs</p>
-                <p className="text-2xl font-bold text-gray-900">{data?.programs?.length || 0}</p>
+                <p className="text-sm font-medium text-slate-400">All Statuses</p>
+                <p className="text-2xl font-bold text-slate-100">{data?.programs?.length || 0}</p>
               </div>
             </div>
           </div>
@@ -117,13 +135,13 @@ const ProgramsPage = () => {
           <div className="card-body">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-accent-100 rounded-lg flex items-center justify-center">
-                  <span className="text-accent-600 font-bold">🟢</span>
+                <div className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                  <span className="text-emerald-400 font-bold text-sm">✓</span>
                 </div>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Published</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm font-medium text-slate-400">Published</p>
+                <p className="text-2xl font-bold text-slate-100">
                   {data?.programs?.filter(p => p.status === 'published').length || 0}
                 </p>
               </div>
@@ -135,13 +153,13 @@ const ProgramsPage = () => {
           <div className="card-body">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <FiEdit3 className="w-5 h-5 text-yellow-600" />
+                <div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center">
+                  <FiEdit3 className="w-5 h-5 text-amber-400" />
                 </div>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Drafts</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm font-medium text-slate-400">Draft</p>
+                <p className="text-2xl font-bold text-slate-100">
                   {data?.programs?.filter(p => p.status === 'draft').length || 0}
                 </p>
               </div>
@@ -153,14 +171,14 @@ const ProgramsPage = () => {
           <div className="card-body">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-secondary-100 rounded-lg flex items-center justify-center">
-                  <FiUsers className="w-5 h-5 text-secondary-600" />
+                <div className="w-8 h-8 bg-violet-500/20 rounded-lg flex items-center justify-center">
+                  <FiUsers className="w-5 h-5 text-violet-400" />
                 </div>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Languages</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {new Set(data?.programs?.flatMap(p => p.languagesAvailable) || []).size}
+                <p className="text-sm font-medium text-slate-400">Unique Topics</p>
+                <p className="text-2xl font-bold text-slate-100">
+                  {new Set(data?.programs?.flatMap(p => p.topicIds?.map(t => t.name) || []) || []).size}
                 </p>
               </div>
             </div>
@@ -194,6 +212,7 @@ const ProgramsPage = () => {
               >
                 <option value="">All Statuses</option>
                 <option value="draft">Draft</option>
+                <option value="scheduled">Scheduled</option>
                 <option value="published">Published</option>
                 <option value="archived">Archived</option>
               </select>
@@ -218,12 +237,14 @@ const ProgramsPage = () => {
                 className="form-input"
                 value={filters.topic}
                 onChange={(e) => handleFilterChange('topic', e.target.value)}
+                disabled={topicsLoading}
               >
                 <option value="">All Topics</option>
-                <option value="Mathematics">Mathematics</option>
-                <option value="Science">Science</option>
-                <option value="Technology">Technology</option>
-                <option value="Language Arts">Language Arts</option>
+                {availableTopics.map(topic => (
+                  <option key={topic._id} value={topic.name}>
+                    {topic.name}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -233,78 +254,105 @@ const ProgramsPage = () => {
       {/* Programs Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {data?.programs?.map((program) => (
-          <div key={program._id} className="card group hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-            <div className="card-body">
-              {/* Program Image */}
-              <div className="relative aspect-w-16 aspect-h-9 mb-4 overflow-hidden rounded-lg">
-                <img
-                  src={program.assets?.posters?.[program.languagePrimary]?.landscape || 'https://via.placeholder.com/400x300/0ea5e9/ffffff?text=Program'}
-                  alt={program.title}
-                  className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-                <div className="absolute top-3 right-3">
-                  <span className={`badge ${getStatusBadge(program.status)}`}>
-                    {getStatusIcon(program.status)} {program.status}
-                  </span>
-                </div>
+          <div key={program._id} className="bg-gray-900 rounded-lg border border-gray-800 shadow-sm hover:shadow-lg hover:border-gray-700 transition-all duration-200 overflow-hidden">
+            {/* Program Image */}
+            <div className="relative">
+              <ResponsiveImage
+                assets={program.assets}
+                alt={program.title}
+                className="w-full h-48"
+                fallbackIcon="📚"
+                fallbackText={program.title.length > 20 ? program.title.substring(0, 20) + '...' : program.title}
+              />
+              <div className="absolute top-3 right-3">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(program.status)}`}>
+                  {getStatusIcon(program.status)} {program.status}
+                </span>
               </div>
+            </div>
 
-              {/* Program Info */}
+            {/* Program Content */}
+            <div className="p-6">
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 line-clamp-2 font-display group-hover:text-primary-600 transition-colors">
+                  <h3 className="text-lg font-semibold text-white line-clamp-2">
                     {program.title}
                   </h3>
-                  <p className="text-gray-600 line-clamp-3 mt-2 text-sm">
+                  <p className="text-gray-400 line-clamp-2 mt-1 text-sm">
                     {program.description || 'No description available'}
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between text-sm text-gray-500">
+                <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center">
-                    <span className="font-medium">Primary:</span>
-                    <span className="ml-1 px-2 py-1 bg-primary-100 text-primary-800 rounded-md text-xs font-medium">
+                    <span className="text-gray-400">Language:</span>
+                    <span className="ml-2 px-2 py-1 bg-violet-900/50 text-violet-400 rounded text-xs font-medium">
                       {program.languagePrimary.toUpperCase()}
                     </span>
                   </div>
-                  <span className="text-xs">
+                  <span className="text-xs text-gray-500">
                     {program.languagesAvailable.length} language{program.languagesAvailable.length !== 1 ? 's' : ''}
                   </span>
                 </div>
 
-                {program.topics && program.topics.length > 0 && (
+                {/* Lesson Statistics */}
+                <div className="flex items-center justify-between text-sm text-gray-400">
+                  <div className="flex items-center space-x-4">
+                    <span className="flex items-center">
+                      <FiBookOpen className="w-4 h-4 mr-1" />
+                      {program.lessonCount || 0} lesson{(program.lessonCount || 0) !== 1 ? 's' : ''}
+                    </span>
+                    {program.publishedLessonCount > 0 && (
+                      <span className="flex items-center text-green-400">
+                        <FiPlay className="w-4 h-4 mr-1" />
+                        {program.publishedLessonCount} published
+                      </span>
+                    )}
+                  </div>
+                  {program.totalDurationMs > 0 && (
+                    <span className="flex items-center text-xs">
+                      <FiClock className="w-3 h-3 mr-1" />
+                      {Math.round(program.totalDurationMs / 60000)}min
+                    </span>
+                  )}
+                </div>
+
+                {program.topicIds && program.topicIds.length > 0 && (
                   <div className="flex flex-wrap gap-2">
-                    {program.topics.slice(0, 3).map((topic) => (
-                      <span key={topic} className="badge badge-info text-xs">
-                        {topic}
+                    {program.topicIds.slice(0, 3).map((topic) => (
+                      <span key={topic._id} className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-800 text-gray-300">
+                        {topic.name}
                       </span>
                     ))}
-                    {program.topics.length > 3 && (
-                      <span className="badge badge-gray text-xs">
-                        +{program.topics.length - 3} more
+                    {program.topicIds.length > 3 && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-800 text-gray-500">
+                        +{program.topicIds.length - 3} more
                       </span>
                     )}
                   </div>
                 )}
 
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                <div className="flex items-center justify-between pt-4 border-t border-gray-800">
                   <div className="flex items-center text-xs text-gray-500">
                     <FiClock className="w-4 h-4 mr-1" />
                     {new Date(program.createdAt).toLocaleDateString()}
                   </div>
                   <div className="flex items-center space-x-2">
                     <Link
-                      to={`/programs/${program._id}`}
-                      className="btn-outline btn-sm"
+                      to={`/dashboard/programs/${program._id}`}
+                      className="inline-flex items-center px-3 py-1.5 border border-gray-700 text-sm font-medium rounded-md text-gray-300 bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
                     >
                       <FiEye className="h-3 w-3 mr-1" />
                       View
                     </Link>
                     {hasPermission('write') && (
-                      <button className="btn-primary btn-sm">
+                      <Link
+                        to={`/dashboard/programs/${program._id}/edit`}
+                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
+                      >
                         <FiEdit3 className="h-3 w-3 mr-1" />
                         Edit
-                      </button>
+                      </Link>
                     )}
                   </div>
                 </div>
@@ -317,33 +365,27 @@ const ProgramsPage = () => {
       {/* Empty State */}
       {data?.programs?.length === 0 && (
         <div className="text-center py-16">
-          <div className="mx-auto h-24 w-24 text-gray-400 mb-6">
+          <div className="mx-auto h-24 w-24 text-slate-600 mb-6">
             <FiBookOpen className="h-24 w-24" />
           </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No programs found</h3>
-          <p className="text-gray-600 mb-6">
+          <h3 className="text-xl font-semibold text-slate-200 mb-2">No programs found</h3>
+          <p className="text-slate-400 mb-6">
             {Object.values(filters).some(f => f) 
               ? 'Try adjusting your search or filter criteria.'
               : 'Get started by creating your first program.'
             }
           </p>
           {hasPermission('write') && (
-            <button 
-              onClick={() => setIsNewProgramModalOpen(true)}
+            <Link 
+              to="/dashboard/programs/new"
               className="btn-primary btn-lg"
             >
               <FiPlus className="h-5 w-5 mr-2" />
               Create your first program
-            </button>
+            </Link>
           )}
         </div>
       )}
-
-      {/* New Program Modal */}
-      <NewProgramModal 
-        isOpen={isNewProgramModalOpen}
-        onClose={() => setIsNewProgramModalOpen(false)}
-      />
     </div>
   );
 };

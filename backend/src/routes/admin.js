@@ -3,6 +3,7 @@
  */
 const express = require('express');
 const { authenticate, authorize } = require('../middleware/auth');
+const { upload } = require('../services/fileUploadService');
 
 // Import controllers
 const programController = require('../controllers/programController');
@@ -24,12 +25,17 @@ router.get('/programs/:id', authorize(['admin', 'editor', 'viewer']), programCon
 router.put('/programs/:id', authorize(['admin', 'editor']), programController.updateProgram);
 router.delete('/programs/:id', authorize(['admin', 'editor']), programController.deleteProgram);
 
+// Program asset routes
+router.put('/programs/:id/assets', authorize(['admin', 'editor']), programController.updateProgramAssets);
+
 // Term routes
 router.get('/programs/:programId/terms', authorize(['admin', 'editor', 'viewer']), termController.getTerms);
 router.post('/programs/:programId/terms', authorize(['admin', 'editor']), termController.createTerm);
 router.get('/terms/:id', authorize(['admin', 'editor', 'viewer']), termController.getTerm);
 router.put('/terms/:id', authorize(['admin', 'editor']), termController.updateTerm);
 router.delete('/terms/:id', authorize(['admin', 'editor']), termController.deleteTerm);
+router.post('/terms/:id/close', authorize(['admin', 'editor', 'viewer']), termController.closeTerm);
+router.post('/terms/:id/open', authorize(['admin', 'editor', 'viewer']), termController.openTerm);
 
 // Lesson routes
 router.get('/terms/:termId/lessons', authorize(['admin', 'editor', 'viewer']), lessonController.getLessons);
@@ -43,10 +49,12 @@ router.post('/lessons/:id/publish', authorize(['admin', 'editor']), lessonContro
 router.post('/lessons/:id/schedule', authorize(['admin', 'editor']), lessonController.scheduleLesson);
 router.post('/lessons/:id/archive', authorize(['admin', 'editor']), lessonController.archiveLesson);
 
-// Asset routes
-router.post('/programs/:id/assets', authorize(['admin', 'editor']), assetController.uploadProgramAsset);
+// Asset routes with file upload
+router.post('/programs/:id/assets', authorize(['admin', 'editor']), upload.single('file'), assetController.uploadProgramAsset);
+router.put('/programs/:id/assets', authorize(['admin', 'editor']), programController.updateProgramAssets);
 router.delete('/programs/:id/assets/:assetId', authorize(['admin', 'editor']), assetController.deleteProgramAsset);
-router.post('/lessons/:id/assets', authorize(['admin', 'editor']), assetController.uploadLessonAsset);
+router.post('/lessons/:id/assets', authorize(['admin', 'editor']), upload.single('file'), assetController.uploadLessonAsset);
+router.put('/lessons/:id/assets', authorize(['admin', 'editor']), lessonController.updateLessonAssets);
 router.delete('/lessons/:id/assets/:assetId', authorize(['admin', 'editor']), assetController.deleteLessonAsset);
 
 // Topic routes
@@ -61,6 +69,8 @@ router.get('/users', authorize(['admin']), userController.getUsers);
 router.post('/users', authorize(['admin']), userController.createUser);
 router.get('/users/:id', authorize(['admin']), userController.getUser);
 router.put('/users/:id', authorize(['admin']), userController.updateUser);
+router.patch('/users/:id/status', authorize(['admin']), userController.toggleUserStatus);
+router.post('/users/:id/reset-password', authorize(['admin']), userController.resetUserPassword);
 router.delete('/users/:id', authorize(['admin']), userController.deleteUser);
 
 module.exports = router;

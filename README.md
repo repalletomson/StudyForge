@@ -1,307 +1,339 @@
-# Admin CMS + Public Catalog API + Scheduled Publishing
+# StudyForge - Educational Content Management System
 
-A comprehensive Content Management System for educational content with multi-language support, scheduled publishing, and a public catalog API.
+A modern, full-stack educational content management system built with React, Node.js, and MongoDB Atlas. Features role-based access control, automated publishing workflows, and a comprehensive content management interface.
 
-## Architecture Overview
+## 🏗️ Architecture Overview
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Backend API   │    │ Publishing      │
-│   React + Vite  │◄──►│ Express + Node  │◄──►│ Worker Service  │
-│   Port: 3000    │    │   Port: 3001    │    │   Cron Jobs     │
+│                 │    │                 │    │                 │
+│   React SPA     │    │   Node.js API   │    │  Background     │
+│   (Frontend)    │◄──►│   (Backend)     │◄──►│  Worker         │
+│                 │    │                 │    │                 │
+│ • Landing Page  │    │ • REST API      │    │ • Auto Publish  │
+│ • Admin Panel   │    │ • Auth & RBAC   │    │ • Scheduling    │
+│ • Content Mgmt  │    │ • File Upload   │    │ • Notifications │
+│                 │    │                 │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
-         │              ┌─────────────────┐              │
-         │              │ PostgreSQL DB   │              │
-         └──────────────►│   Port: 5432    │◄─────────────┘
-                        └─────────────────┘
-                                 │
-                        ┌─────────────────┐
-                        │   Redis Cache   │
-                        │   Port: 6379    │
-                        └─────────────────┘
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│                 │    │                 │    │                 │
+│   nginx         │    │  MongoDB Atlas  │    │   File Storage  │
+│   (Proxy)       │    │  (Database)     │    │   (Local/Cloud) │
+│                 │    │                 │    │                 │
+│ • SSL/TLS       │    │ • Users         │    │ • Images        │
+│ • Load Balance  │    │ • Programs      │    │ • Videos        │
+│ • Static Files  │    │ • Lessons       │    │ • Documents     │
+│                 │    │ • Assets        │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-## Features
+### Key Components
 
-### Content Management
-- **Hierarchical Structure**: Programs → Terms → Lessons
-- **Multi-language Support**: Content and assets in multiple languages
-- **Media Asset Management**: Posters, thumbnails with multiple variants
-- **Role-based Access Control**: Admin, Editor, Viewer roles
+- **Frontend (React)**: Modern SPA with landing page and admin dashboard
+- **Backend (Node.js)**: RESTful API with authentication and file handling
+- **Worker Process**: Background job processing for scheduled publishing
+- **Database (MongoDB Atlas)**: Cloud-hosted document database
+- **Reverse Proxy (nginx)**: SSL termination and load balancing
 
-### Publishing Workflow
-- **Scheduled Publishing**: Schedule lessons for future release
-- **Automated Publishing**: Background worker processes scheduled content
-- **Status Management**: Draft, Scheduled, Published, Archived states
-- **Validation**: Asset and content validation before publishing
-
-### Public API
-- **Catalog Endpoints**: Public API for published content
-- **Filtering & Pagination**: Language, topic, and cursor-based pagination
-- **Caching**: Redis caching with proper HTTP headers
-- **Performance Optimized**: Database indexes and query optimization
-
-## Technology Stack
-
-### Backend
-- **Node.js 18+** with Express.js framework
-- **JavaScript ES6+** with JSDoc documentation
-- **MongoDB 7+** for primary database
-- **Redis 7+** for caching and session storage
-- **Mongoose ODM** for database operations and modeling
-
-### Frontend
-- **React 18** with JavaScript
-- **Vite** for build tooling and development server
-- **Tailwind CSS** for styling
-- **React Query** for API state management
-
-### Infrastructure
-- **Docker & Docker Compose** for containerization
-- **Nginx** for reverse proxy and SSL termination
-- **Winston** for structured logging
-
-## Quick Start
+## 🚀 Local Setup Steps
 
 ### Prerequisites
 - Node.js 18+ and npm 9+
 - Docker and Docker Compose
-- Git
+- MongoDB Atlas account
 
-### Local Development Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd admin-cms-catalog
-   ```
-
-2. **Set up environment variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-3. **Start all services with Docker**
-   ```bash
-   npm run docker:up
-   ```
-
-   This will start:
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:3001
-   - MongoDB: localhost:27017
-   - Redis: localhost:6379
-
-4. **Initialize the database**
-   ```bash
-   # The database will be automatically initialized with collections and indexes
-   # Check the mongo-init.js script for details
-   ```
-
-5. **Seed the database with sample data**
-   ```bash
-   npm run seed
-   ```
-
-6. **Access the application**
-   - CMS Web App: http://localhost:3000
-   - API Documentation: http://localhost:3001/api/docs
-   - Health Check: http://localhost:3001/health
-
-### Manual Setup (without Docker)
-
-1. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-2. **Start MongoDB and Redis**
-   ```bash
-   # Using your preferred method (Docker, homebrew, apt, etc.)
-   # MongoDB: mongodb://localhost:27017
-   # Redis: redis://localhost:6379
-   ```
-
-3. **Run database setup**
-   ```bash
-   npm run seed
-   ```
-
-4. **Start all services**
-   ```bash
-   npm run dev
-   ```
-
-## Database Setup
-
-### MongoDB Collections and Indexes
-The system automatically creates the following collections with proper validation and indexes:
-- **users** - User accounts with role-based access
-- **topics** - Content categorization
-- **programs** - Educational programs
-- **terms** - Program terms/semesters  
-- **lessons** - Individual lessons with multi-language content
-- **programAssets** - Program posters and media
-- **lessonAssets** - Lesson thumbnails and media
-
-### Running Database Operations
+### 1. Clone and Configure
 ```bash
-# Seed database with sample data
-npm run seed
-
-# Connect to MongoDB shell
-mongosh mongodb://cms_user:cms_password@localhost:27017/cms_db
+git clone <repository-url>
+cd studyforge
+cp .env.example .env
 ```
 
-## Seed Data
+### 2. Update Environment Variables
+Edit `.env` with your configuration:
+```env
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/studyforge
+JWT_SECRET=your-super-secure-jwt-secret-key
+NODE_ENV=development
+PORT=3001
+FRONTEND_URL=http://localhost:5173
+```
 
-The seed script creates:
-- **2 Programs** with multi-language content
-- **2 Terms** across the programs
-- **6 Lessons** with various statuses
-- **Sample Assets** for all required variants
-- **Test Users** for each role (admin, editor, viewer)
-- **1 Scheduled Lesson** for worker demonstration
-
-### Running Seed Script
+### 3. Install Dependencies
 ```bash
+# Backend dependencies
+cd backend && npm install
+
+# Frontend dependencies  
+cd ../frontend && npm install
+
+# Worker dependencies
+cd ../worker && npm install
+```
+
+### 4. Run Database Setup
+```bash
+# Run migrations (if any)
+npm run migrate
+
+# Seed initial data
 npm run seed
 ```
 
-## API Documentation
-
-### Admin API Endpoints
-- `POST /api/auth/login` - User authentication
-- `GET /api/admin/programs` - List programs with filtering
-- `POST /api/admin/programs` - Create new program
-- `GET /api/admin/programs/:id` - Get program details
-- `PUT /api/admin/programs/:id` - Update program
-- `DELETE /api/admin/programs/:id` - Delete program
-
-### Public Catalog API
-- `GET /catalog/programs` - List published programs
-- `GET /catalog/programs/:id` - Get program with published lessons
-- `GET /catalog/lessons/:id` - Get published lesson details
-
-### Health Check
-- `GET /health` - Service health and database connectivity
-
-## Testing
-
-### Run All Tests
+### 5. Start Development Services
 ```bash
-npm test
+# Terminal 1: Backend API
+cd backend && npm run dev
+
+# Terminal 2: Frontend Dev Server
+cd frontend && npm run dev
+
+# Terminal 3: Background Worker
+cd worker && npm run dev
 ```
 
-### Run Specific Test Suites
+### 6. Access Application
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:3001
+- **API Health**: http://localhost:3001/health
+
+## 🗄️ Database Operations
+
+### How Migrations Run
 ```bash
-# Backend tests
-npm run test:backend
+# Run database migrations
+cd backend
+npm run migrate
 
-# Frontend tests
-npm run test:frontend
-
-# Watch mode
-cd backend && npm run test:watch
+# Or using Docker
+docker-compose exec backend npm run migrate
 ```
 
-## Deployment
+Migrations handle:
+- Schema updates
+- Index creation
+- Data transformations
+- Version tracking
 
-### Production Build
+### How Seed Runs
 ```bash
-npm run build
+# Seed development data
+cd backend
+npm run seed
+
+# Or using Docker
+docker-compose exec backend npm run seed
 ```
 
-### Production Deployment with Docker
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-```
+Seed script creates:
+- **3 Users**: Admin, Editor, Viewer with demo credentials
+- **12 Topics**: Technology, Business, Design, Science, etc.
+- **4 Programs**: Sample educational programs with multi-language support
+- **Sample Assets**: Placeholder images and media files
 
-### Environment Variables for Production
-Set these environment variables in your production environment:
-- `MONGODB_URI` - MongoDB connection string
-- `REDIS_URL` - Redis connection string
-- `JWT_SECRET` - Strong JWT secret key
-- `API_URL` - Your API domain
-- `FRONTEND_URL` - Your frontend domain
+**Demo Credentials:**
+- Admin: `admin@example.com` / `admin123`
+- Editor: `editor@example.com` / `editor123`  
+- Viewer: `viewer@example.com` / `viewer123`
 
-## Demo Flow
+## 🌐 Deployed URLs
 
-1. **Login as Editor**
+### Production Environment
+- **Web Application**: https://studyforge.example.com
+- **API Endpoint**: https://api.studyforge.example.com
+- **Health Check**: https://api.studyforge.example.com/health
+- **Public Catalog**: https://studyforge.example.com/catalog
+
+### Staging Environment
+- **Web Application**: https://staging.studyforge.example.com
+- **API Endpoint**: https://api-staging.studyforge.example.com
+
+## 🎯 Complete Demo Flow
+
+### Step 1: Login as Editor
+1. Navigate to the deployed web application
+2. Click "Sign In" on the landing page
+3. Use editor credentials:
    - Email: `editor@example.com`
-   - Password: `password123`
+   - Password: `editor123`
+4. Verify you're redirected to the dashboard
 
-2. **Create/Edit Lesson**
-   - Navigate to Programs → Select Program → Terms → Lessons
-   - Create new lesson or edit existing
-   - Upload required assets (thumbnails)
-   - Add content URLs
+### Step 2: Create/Edit Program and Lesson
+1. **Create a Program:**
+   - Go to "Programs" in the sidebar
+   - Click "New Program"
+   - Fill in program details:
+     - Title: "Advanced React Development"
+     - Description: "Master advanced React patterns and techniques"
+     - Select topics: "Technology", "Programming"
+     - Add poster images (portrait/landscape)
+   - Click "Create Program"
 
-3. **Schedule Publication**
-   - Set publish date/time in lesson editor
-   - Click "Schedule" button
-   - Lesson status changes to "Scheduled"
+2. **Add a Term:**
+   - In the program detail page, click "Add Term"
+   - Enter term title: "React Hooks & Context"
+   - Save the term
 
-4. **Wait for Worker**
-   - Worker runs every minute
-   - Scheduled lessons are automatically published
-   - Check lesson status changes to "Published"
+3. **Create a Lesson:**
+   - Click "Add Lesson" in the term
+   - Fill lesson details:
+     - Title: "Custom Hooks Deep Dive"
+     - Content Type: "Video"
+     - YouTube URL: `https://www.youtube.com/watch?v=example`
+     - Duration: 45 minutes
+     - Mark as "Paid Content"
+   - Set status to "Draft"
+   - Save lesson
 
-5. **Verify Public Catalog**
-   - Visit `/catalog/programs` endpoint
-   - Verify newly published lesson appears
-   - Check program is now published
+### Step 3: Schedule Publishing
+1. **Edit the Lesson:**
+   - Click "Edit" on the created lesson
+   - Change status from "Draft" to "Scheduled"
+   - Set publish date: 2 minutes from current time
+   - Add thumbnail images
+   - Save changes
 
-## Monitoring and Logs
+2. **Verify Scheduling:**
+   - Check lesson shows "Scheduled" status
+   - Note the scheduled publish time
+   - Lesson should not appear in public catalog yet
 
-### View Logs
+### Step 4: Wait for Worker → Verify Publishing
+1. **Monitor Worker Process:**
+   - Worker runs every minute checking for scheduled content
+   - Wait for the scheduled time to pass (2+ minutes)
+   - Check backend logs for publishing activity:
+     ```bash
+     docker-compose logs worker
+     ```
+
+2. **Verify Auto-Publishing:**
+   - Refresh the lesson page
+   - Status should change from "Scheduled" to "Published"
+   - Published timestamp should be populated
+   - Program status should auto-update to "Published"
+
+### Step 5: Verify Public Catalog
+1. **Check Public Catalog:**
+   - Navigate to `/catalog` (public route, no login required)
+   - Verify the program appears in the catalog
+   - Click on the program to view details
+   - Confirm the published lesson is visible
+
+2. **Test Content Access:**
+   - Free lessons should be accessible to all users
+   - Paid lessons should show "Premium Content" indicator
+   - Verify proper content filtering by language/topic
+
+### Step 6: Additional Verification
+1. **Test Different User Roles:**
+   - Logout and login as viewer (`viewer@example.com` / `viewer123`)
+   - Verify limited access to admin features
+   - Login as admin to see full management capabilities
+
+2. **Test Publishing Workflow:**
+   - Create another lesson with different publish schedule
+   - Test immediate publishing (status: "Published")
+   - Test archiving workflow (status: "Archived")
+
+## 🔧 Development Commands
+
 ```bash
-# All services
+# Backend
+npm run dev          # Start development server
+npm run start        # Start production server
+npm run seed         # Seed database
+npm run migrate      # Run migrations
+
+# Frontend  
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run preview      # Preview production build
+
+# Worker
+npm run dev          # Start development worker
+npm run start        # Start production worker
+
+# Docker
+docker-compose up -d              # Start all services
+docker-compose -f docker-compose.prod.yml up -d  # Production
+docker-compose logs -f worker     # View worker logs
+```
+
+## 📁 Project Structure
+
+```
+studyforge/
+├── backend/                 # Node.js API Server
+│   ├── src/
+│   │   ├── controllers/     # Route handlers
+│   │   ├── models/         # MongoDB schemas
+│   │   ├── routes/         # API routes
+│   │   ├── middleware/     # Auth, validation, etc.
+│   │   ├── scripts/        # Migration & seed scripts
+│   │   └── config/         # Database, logging config
+│   ├── Dockerfile
+│   └── package.json
+├── frontend/               # React Application
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   ├── pages/          # Route components
+│   │   ├── services/       # API client functions
+│   │   ├── contexts/       # React contexts
+│   │   └── utils/          # Helper functions
+│   ├── public/             # Static assets
+│   ├── Dockerfile
+│   └── package.json
+├── worker/                 # Background Job Processor
+│   ├── src/
+│   │   ├── models/         # Shared data models
+│   │   └── worker.js       # Main worker process
+│   └── package.json
+├── nginx/                  # Reverse Proxy Config
+│   └── nginx.conf
+├── docker-compose.yml      # Development setup
+├── docker-compose.prod.yml # Production setup
+└── README.md
+```
+
+## 🔒 Security & Production Features
+
+- **Authentication**: JWT-based with role-based access control
+- **Input Validation**: Comprehensive request validation
+- **Rate Limiting**: API endpoint protection
+- **File Upload Security**: Type validation and size limits  
+- **CORS Protection**: Configurable origin restrictions
+- **SSL/TLS**: nginx handles certificate management
+- **Health Monitoring**: Endpoint monitoring and logging
+- **Error Handling**: Structured error responses and logging
+
+## 📊 Monitoring & Logging
+
+- **Health Checks**: `/health` endpoint for all services
+- **Structured Logging**: Winston with daily log rotation
+- **Docker Health Checks**: Container health monitoring
+- **Worker Status**: Background job processing logs
+- **Database Monitoring**: MongoDB Atlas built-in monitoring
+
+## 🚀 Deployment
+
+### Production Deployment
+```bash
+# Build and deploy all services
+docker-compose -f docker-compose.prod.yml up -d
+
+# Run initial setup
+docker-compose exec backend npm run migrate
+docker-compose exec backend npm run seed
+
+# Monitor services
 docker-compose logs -f
-
-# Specific service
-docker-compose logs -f backend
-docker-compose logs -f worker
 ```
 
-### Health Monitoring
-- Backend: http://localhost:3001/health
-- Database connectivity included in health check
-- Worker status monitoring via logs
-
-## Development
-
-### Code Style
-- ESLint configuration for consistent code style
-- JSDoc documentation for all functions
-- Prettier for code formatting
-
-### Database Schema
-- Prisma schema in `backend/prisma/schema.prisma`
-- Migrations in `backend/prisma/migrations/`
-- Seed data in `backend/src/scripts/seed.js`
-
-### Project Structure
-```
-├── backend/          # Express.js API server
-├── frontend/         # React web application
-├── worker/           # Publishing worker service
-├── nginx/            # Nginx configuration
-├── docker-compose.yml # Development environment
-└── README.md         # This file
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Run the test suite
-6. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License.
+### Environment-Specific Configs
+- **Development**: Hot reloading, debug logging, local file storage
+- **Staging**: Production builds, staging database, SSL certificates
+- **Production**: Optimized builds, CDN integration, monitoring alerts

@@ -12,6 +12,7 @@ const winston = require('winston');
 const Lesson = require('./models/Lesson');
 const Term = require('./models/Term');
 const Program = require('./models/Program');
+const LessonAsset = require('./models/LessonAsset');
 
 // Logger configuration
 const logger = winston.createLogger({
@@ -21,7 +22,7 @@ const logger = winston.createLogger({
     winston.format.errors({ stack: true }),
     winston.format.json()
   ),
-  defaultMeta: { service: 'cms-worker' },
+  defaultMeta: { service: 'studyforge-worker' },
   transports: [
     new winston.transports.Console({
       format: winston.format.combine(
@@ -40,8 +41,6 @@ const connectDatabase = async () => {
     const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/cms_db';
     
     await mongoose.connect(mongoUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
       maxPoolSize: 5,
       serverSelectionTimeoutMS: 5000
     });
@@ -69,6 +68,7 @@ const processScheduledLessons = async () => {
     logger.info('Starting scheduled lesson processing');
 
     // Find lessons that are scheduled and ready to publish
+    // IMPORTANT: Exclude archived lessons - they must never be published again
     const now = new Date();
     const scheduledLessons = await Lesson.find({
       status: 'scheduled',
@@ -77,84 +77,110 @@ const processScheduledLessons = async () => {
 
     logger.info(`Found ${scheduledLessons.length} lessons ready for publishing`);
 
-    // Process each lesson
+    // Process each lesson with concurrency safety
     for (const lesson of scheduledLessons) {
       try {
-        // Use a transaction to ensure consistency
-        const session = await mongoose.startSession();
-        
-        await session.withTransaction(async () => {
-          // Double-check the lesson is still scheduled (prevent race conditions)
-          const currentLesson = await Lesson.findById(lesson._id).session(session);
-          
-          if (!currentLesson || currentLesson.status !== 'scheduled') {
-            logger.warn('Lesson status changed during processing', {
-              lessonId: lesson._id,
-              currentStatus: currentLesson?.status
-            });
-            return;
+        // Use atomic update with conditions to prevent race conditions
+        // This ensures only one worker can publish a lesson even if multiple workers run
+        const result = await Lesson.findOneAndUpdate(
+          {
+            _id: lesson._id,
+            status: 'scheduled', // Double-check status hasn't changed
+            publishAt: { $lte: now }
+          },
+          {
+            $set: {
+              status: 'published',
+              publishedAt: new Date()
+            },
+            $unset: {
+              publishAt: 1 // Remove publishAt field when published
+            }
+          },
+          {
+            new: true,
+            runValidators: true
           }
+        );
 
-          // Validate assets before publishing
-          const assetValidation = await currentLesson.validateAssets();
-          if (!assetValidation.isValid) {
-            logger.error('Cannot publish lesson due to missing assets', {
-              lessonId: lesson._id,
-              title: lesson.title,
-              missingAssets: assetValidation.missingVariants
-            });
-            errorCount++;
-            return;
-          }
+        // If result is null, another worker already processed this lesson
+        if (!result) {
+          logger.warn('Lesson already processed by another worker', {
+            lessonId: lesson._id,
+            title: lesson.title
+          });
+          continue;
+        }
 
-          // Update lesson to published
-          currentLesson.status = 'published';
-          currentLesson.publishedAt = new Date();
-          currentLesson.publishAt = undefined;
+        // Validate assets before considering it successfully published
+        const assetValidation = await result.validateAssets();
+        if (!assetValidation.isValid) {
+          // Revert to scheduled status if assets are missing
+          await Lesson.findByIdAndUpdate(lesson._id, {
+            status: 'scheduled',
+            publishAt: lesson.publishAt
+          });
           
-          await currentLesson.save({ session });
+          logger.error('Reverted lesson publication due to missing assets', {
+            lessonId: lesson._id,
+            title: lesson.title,
+            missingAssets: assetValidation.missingVariants
+          });
+          errorCount++;
+          continue;
+        }
 
-          // Auto-publish parent program if needed
-          const term = await Term.findById(currentLesson.termId).session(session);
-          if (term) {
-            const program = await Program.findById(term.programId).session(session);
-            if (program && program.status === 'draft') {
-              program.status = 'published';
-              program.publishedAt = program.publishedAt || new Date();
-              await program.save({ session });
-              
+        // Auto-publish parent program if needed (idempotent)
+        const term = await Term.findById(result.termId);
+        if (term) {
+          const program = await Program.findById(term.programId);
+          if (program && program.status === 'draft') {
+            // Use atomic update to prevent race conditions on program publishing
+            const programResult = await Program.findOneAndUpdate(
+              {
+                _id: program._id,
+                status: 'draft' // Only update if still draft
+              },
+              {
+                $set: {
+                  status: 'published',
+                  publishedAt: new Date() // Set publishedAt only once
+                }
+              },
+              { new: true }
+            );
+            
+            if (programResult) {
               logger.info('Auto-published parent program', {
                 programId: program._id,
-                programTitle: program.title
+                programTitle: program.title,
+                triggeredByLessonId: lesson._id
               });
             }
           }
+        }
 
-          logger.info('Successfully published lesson', {
-            lessonId: lesson._id,
-            title: lesson.title,
-            scheduledFor: lesson.publishAt,
-            publishedAt: currentLesson.publishedAt
-          });
-
-          processedCount++;
-        });
-
-        await session.endSession();
-
-      } catch (error) {
-        logger.error('Error processing lesson', {
+        logger.info('Lesson published successfully', {
           lessonId: lesson._id,
           title: lesson.title,
-          error: error.message,
-          stack: error.stack
+          publishedAt: result.publishedAt
+        });
+
+        processedCount++;
+
+      } catch (lessonError) {
+        logger.error('Error processing individual lesson', {
+          lessonId: lesson._id,
+          title: lesson.title,
+          error: lessonError.message,
+          stack: lessonError.stack
         });
         errorCount++;
       }
     }
 
     const duration = Date.now() - startTime;
-    logger.info('Completed scheduled lesson processing', {
+    logger.info('Scheduled lesson processing completed', {
       totalFound: scheduledLessons.length,
       processed: processedCount,
       errors: errorCount,
@@ -162,7 +188,7 @@ const processScheduledLessons = async () => {
     });
 
   } catch (error) {
-    logger.error('Error in scheduled lesson processing:', {
+    logger.error('Error in scheduled lesson processing', {
       error: error.message,
       stack: error.stack
     });

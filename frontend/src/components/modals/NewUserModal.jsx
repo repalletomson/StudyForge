@@ -127,28 +127,28 @@ const NewUserModal = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         <div 
-          className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 backdrop-blur-sm"
+          className="fixed inset-0 transition-opacity bg-slate-900/75 backdrop-blur-sm"
           onClick={handleClose}
         />
         
-        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-2xl rounded-2xl animate-slide-up">
+        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-slate-900 shadow-2xl rounded-2xl animate-slide-up border border-slate-800">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
-              <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                <FiUser className="w-5 h-5 text-blue-600" />
+              <div className="flex-shrink-0 w-10 h-10 bg-violet-500/20 rounded-lg flex items-center justify-center mr-3">
+                <FiUser className="w-5 h-5 text-violet-400" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900 font-display">
+                <h3 className="text-xl font-bold text-slate-100 font-heading">
                   Create New User
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-slate-400">
                   Add a new user to the system
                 </p>
               </div>
             </div>
             <button
               onClick={handleClose}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
             >
               <FiX className="w-5 h-5" />
             </button>
@@ -165,12 +165,12 @@ const NewUserModal = ({ isOpen, onClose }) => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`form-input ${errors.email ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                className={`form-input ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                 placeholder="user@example.com"
                 disabled={createUserMutation.isLoading}
               />
               {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                <p className="mt-1 text-sm text-red-400">{errors.email}</p>
               )}
             </div>
 
@@ -183,7 +183,7 @@ const NewUserModal = ({ isOpen, onClose }) => {
                 name="role"
                 value={formData.role}
                 onChange={handleChange}
-                className={`form-input ${errors.role ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                className={`form-input ${errors.role ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                 disabled={createUserMutation.isLoading}
               >
                 <option value="viewer">Viewer - Read-only access</option>
@@ -191,7 +191,7 @@ const NewUserModal = ({ isOpen, onClose }) => {
                 <option value="admin">Admin - Full system access</option>
               </select>
               {errors.role && (
-                <p className="mt-1 text-sm text-red-600">{errors.role}</p>
+                <p className="mt-1 text-sm text-red-400">{errors.role}</p>
               )}
             </div>
 
@@ -203,20 +203,20 @@ const NewUserModal = ({ isOpen, onClose }) => {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className={`form-input pr-10 ${errors.password ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  className={`form-input pr-10 ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                   placeholder="Enter password"
                   disabled={createUserMutation.isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200"
                 >
                   {showPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
                 </button>
               </div>
               {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                <p className="mt-1 text-sm text-red-400">{errors.password}</p>
               )}
             </div>
 
@@ -228,24 +228,24 @@ const NewUserModal = ({ isOpen, onClose }) => {
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className={`form-input pr-10 ${errors.confirmPassword ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  className={`form-input pr-10 ${errors.confirmPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                   placeholder="Confirm password"
                   disabled={createUserMutation.isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200"
                 >
                   {showConfirmPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
                 </button>
               </div>
               {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+                <p className="mt-1 text-sm text-red-400">{errors.confirmPassword}</p>
               )}
             </div>
 
-            <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+            <div className="flex items-center justify-end space-x-4 pt-6 border-t border-slate-800">
               <button
                 type="button"
                 onClick={handleClose}

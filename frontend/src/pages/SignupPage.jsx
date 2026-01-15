@@ -1,64 +1,32 @@
 /**
- * Signup Page Component
+ * Enhanced Signup Page Component
  */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
 import { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiUserPlus } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 const SignupPage = () => {
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
-  });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   
   const { login } = useAuth();
   const navigate = useNavigate();
+  
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors }
+  } = useForm();
 
-  const validateForm = () => {
-    const newErrors = {};
+  const password = watch('password');
 
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
+  const onSubmit = async (data) => {
     setIsLoading(true);
 
     try {
@@ -68,23 +36,23 @@ const SignupPage = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          password: formData.password
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          password: data.password
         }),
       });
 
-      const data = await response.json();
+      const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Signup failed');
+        throw new Error(result.message || 'Signup failed');
       }
 
       // Auto-login after successful signup
-      await login(formData.email, formData.password);
+      await login({ email: data.email, password: data.password });
       toast.success('Account created successfully!');
-      navigate('/programs');
+      navigate('/dashboard/programs');
 
     } catch (error) {
       toast.error(error.message || 'Signup failed');
@@ -93,193 +61,221 @@ const SignupPage = () => {
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-purple-950 to-violet-950 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 animate-fade-in">
         {/* Header */}
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center mb-6 shadow-lg">
-            <FiUserPlus className="h-8 w-8 text-white" />
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900 font-display">
-            Create Account
+          <h2 className="text-3xl font-bold text-white font-heading">
+            StudyForge
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Join our learning platform today
+          <p className="mt-2 text-slate-400">
+            Create your account
           </p>
         </div>
 
         {/* Signup Form */}
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+        <div className="card">
+          <div className="card-body">
+            <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="firstName" className="form-label">
+                    First Name
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FiUser className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      id="firstName"
+                      type="text"
+                      autoComplete="given-name"
+                      className={`form-input pl-10 ${errors.firstName ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
+                      placeholder="John"
+                      {...register('firstName', {
+                        required: 'First name is required',
+                        minLength: {
+                          value: 2,
+                          message: 'First name must be at least 2 characters'
+                        }
+                      })}
+                    />
+                  </div>
+                  {errors.firstName && (
+                    <p className="form-error">{errors.firstName.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="lastName" className="form-label">
+                    Last Name
+                  </label>
+                  <input
+                    id="lastName"
+                    type="text"
+                    autoComplete="family-name"
+                    className={`form-input ${errors.lastName ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
+                    placeholder="Doe"
+                    {...register('lastName', {
+                      minLength: {
+                        value: 2,
+                        message: 'Last name must be at least 2 characters'
+                      }
+                    })}
+                  />
+                  {errors.lastName && (
+                    <p className="form-error">{errors.lastName.message}</p>
+                  )}
+                </div>
+              </div>
+
               <div>
-                <label className="form-label">
-                  <FiUser className="inline w-4 h-4 mr-2" />
-                  First Name
+                <label htmlFor="email" className="form-label">
+                  Email Address
                 </label>
-                <input
-                  type="text"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  className={`form-input ${errors.firstName ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-                  placeholder="John"
-                  disabled={isLoading}
-                />
-                {errors.firstName && (
-                  <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiMail className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    className={`form-input pl-10 ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
+                    placeholder="john@example.com"
+                    {...register('email', {
+                      required: 'Email is required',
+                      pattern: {
+                        value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                        message: 'Please enter a valid email address'
+                      }
+                    })}
+                  />
+                </div>
+                {errors.email && (
+                  <p className="form-error">{errors.email.message}</p>
                 )}
               </div>
 
               <div>
-                <label className="form-label">
-                  Last Name
+                <label htmlFor="password" className="form-label">
+                  Password
                 </label>
-                <input
-                  type="text"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  className="form-input"
-                  placeholder="Doe"
-                  disabled={isLoading}
-                />
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiLock className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    className={`form-input pl-10 pr-10 ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
+                    placeholder="Enter password"
+                    {...register('password', {
+                      required: 'Password is required',
+                      minLength: {
+                        value: 6,
+                        message: 'Password must be at least 6 characters'
+                      }
+                    })}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <FiEyeOff className="h-5 w-5 text-slate-400 hover:text-slate-300" />
+                    ) : (
+                      <FiEye className="h-5 w-5 text-slate-400 hover:text-slate-300" />
+                    )}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="form-error">{errors.password.message}</p>
+                )}
               </div>
-            </div>
 
-            <div>
-              <label className="form-label">
-                <FiMail className="inline w-4 h-4 mr-2" />
-                Email Address
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className={`form-input ${errors.email ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-                placeholder="john@example.com"
-                disabled={isLoading}
-              />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-              )}
-            </div>
+              <div>
+                <label htmlFor="confirmPassword" className="form-label">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiLock className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    className={`form-input pl-10 pr-10 ${errors.confirmPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
+                    placeholder="Confirm password"
+                    {...register('confirmPassword', {
+                      required: 'Please confirm your password',
+                      validate: value =>
+                        value === password || 'Passwords do not match'
+                    })}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? (
+                      <FiEyeOff className="h-5 w-5 text-slate-400 hover:text-slate-300" />
+                    ) : (
+                      <FiEye className="h-5 w-5 text-slate-400 hover:text-slate-300" />
+                    )}
+                  </button>
+                </div>
+                {errors.confirmPassword && (
+                  <p className="form-error">{errors.confirmPassword.message}</p>
+                )}
+              </div>
 
-            <div>
-              <label className="form-label">
-                <FiLock className="inline w-4 h-4 mr-2" />
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className={`form-input pr-10 ${errors.password ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-                  placeholder="Enter password"
-                  disabled={isLoading}
-                />
+              <div>
                 <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full btn-primary btn-lg"
                 >
-                  {showPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
+                  {isLoading ? (
+                    <div className="flex items-center justify-center">
+                      <LoadingSpinner size="sm" />
+                      <span className="ml-2">Creating Account...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <FiUserPlus className="w-5 h-5 mr-2" />
+                      Create Account
+                    </>
+                  )}
                 </button>
               </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-              )}
-            </div>
 
-            <div>
-              <label className="form-label">
-                <FiLock className="inline w-4 h-4 mr-2" />
-                Confirm Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className={`form-input pr-10 ${errors.confirmPassword ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-                  placeholder="Confirm password"
-                  disabled={isLoading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                >
-                  {showConfirmPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
-                </button>
+              <div className="text-center">
+                <p className="text-sm text-slate-400">
+                  Already have an account?{' '}
+                  <Link
+                    to="/login"
+                    className="font-medium text-violet-400 hover:text-violet-300 transition-colors"
+                  >
+                    Sign in here
+                  </Link>
+                </p>
               </div>
-              {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
-              )}
-            </div>
+            </form>
           </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
-            >
-              {isLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Creating Account...
-                </>
-              ) : (
-                <>
-                  <FiUserPlus className="w-5 h-5 mr-2" />
-                  Create Account
-                </>
-              )}
-            </button>
-          </div>
-
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              Already have an account?{' '}
-              <Link
-                to="/login"
-                className="font-medium text-blue-600 hover:text-blue-500 transition-colors"
-              >
-                Sign in here
-              </Link>
-            </p>
-          </div>
-        </form>
+        </div>
 
         {/* Terms */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-gray-500">
+        <div className="text-center">
+          <p className="text-xs text-slate-500">
             By creating an account, you agree to our{' '}
-            <a href="#" className="text-blue-600 hover:text-blue-500">Terms of Service</a>
+            <a href="#" className="text-violet-400 hover:text-violet-300 transition-colors">Terms of Service</a>
             {' '}and{' '}
-            <a href="#" className="text-blue-600 hover:text-blue-500">Privacy Policy</a>
+            <a href="#" className="text-violet-400 hover:text-violet-300 transition-colors">Privacy Policy</a>
           </p>
         </div>
       </div>

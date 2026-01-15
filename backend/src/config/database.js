@@ -1,3 +1,4 @@
+
 /**
  * Database configuration and connection setup
  */
@@ -14,8 +15,6 @@ const connectDatabase = async () => {
       process.env.MONGODB_URI || "mongodb://localhost:27017/cms_db";
 
     await mongoose.connect(mongoUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,

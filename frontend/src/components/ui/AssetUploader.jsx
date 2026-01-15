@@ -1,9 +1,9 @@
 /**
  * Asset Upload Component with drag & drop
  */
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { FiUpload, FiX, FiImage, FiCheck, FiAlertCircle } from 'react-icons/fi';
+import { FiUpload, FiX, FiImage } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 const AssetUploader = ({ 
@@ -13,10 +13,17 @@ const AssetUploader = ({
   variant, 
   currentUrl, 
   onUploadSuccess,
-  className = '' 
+  className = '',
+  showAsButton = false
 }) => {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState(currentUrl);
+
+  // Update preview when currentUrl changes (from parent component refresh)
+  useEffect(() => {
+    console.log(`AssetUploader ${variant} - currentUrl changed:`, currentUrl);
+    setPreview(currentUrl);
+  }, [currentUrl, variant]);
 
   const onDrop = useCallback(async (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -37,41 +44,50 @@ const AssetUploader = ({
     setUploading(true);
 
     try {
-      // Create preview
+      // Create immediate preview from file
       const previewUrl = URL.createObjectURL(file);
       setPreview(previewUrl);
 
-      // Simulate upload to cloud storage (in real app, this would upload to S3/Cloudinary)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('language', language);
+      formData.append('variant', variant);
       
-      // Generate mock URL
-      const mockUrl = `https://cdn.example.com/${entityType}s/${entityId}/${language}-${variant}-${Date.now()}.jpg`;
-      
-      // Call API to save asset URL
-      const response = await fetch(`/api/admin/${entityType}s/${entityId}/assets`, {
+      // Call API to upload actual file
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/admin/${entityType}s/${entityId}/assets`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({
-          language,
-          variant,
-          url: mockUrl
-        })
+        body: formData
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save asset');
+        const errorData = await response.text();
+        console.error('Upload failed:', response.status, errorData);
+        throw new Error(`Failed to upload file: ${response.status}`);
       }
 
-      setPreview(mockUrl);
-      onUploadSuccess?.(mockUrl);
-      toast.success('Asset uploaded successfully!');
+      const savedAsset = await response.json();
+      console.log('Asset saved successfully:', savedAsset);
+
+      // Update preview with the server URL
+      const serverUrl = `${apiUrl}/api/assets/${savedAsset.fileId}`;
+      setPreview(serverUrl);
+      
+      // Notify parent component
+      if (onUploadSuccess) {
+        onUploadSuccess(serverUrl);
+      }
+      
+      toast.success(`${variant} image uploaded successfully!`);
 
     } catch (error) {
-      toast.error('Failed to upload asset');
-      setPreview(currentUrl);
+      console.error('Upload error:', error);
+      toast.error(`Failed to upload ${variant} image: ${error.message}`);
+      setPreview(currentUrl); // Revert to previous state
     } finally {
       setUploading(false);
     }
@@ -104,15 +120,31 @@ const AssetUploader = ({
     }
   };
 
+  if (showAsButton) {
+    // Show as button overlay for existing images
+    return (
+      <div {...getRootProps()} className="cursor-pointer">
+        <input {...getInputProps()} />
+        <button
+          type="button"
+          className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
+          disabled={uploading}
+        >
+          <FiUpload className="w-4 h-4 text-gray-600" />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className={`relative ${className}`}>
       {preview ? (
-        // Show current asset
+        // Show current asset with hover overlay
         <div className="relative group">
           <img
             src={preview}
             alt={`${variant} ${language}`}
-            className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+            className="w-full h-40 object-cover rounded-lg border-2 border-green-300"
           />
           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center">
             <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-2">
@@ -139,14 +171,17 @@ const AssetUploader = ({
           {uploading && (
             <div className="absolute inset-0 bg-white bg-opacity-90 rounded-lg flex items-center justify-center">
               <div className="text-center">
-                <svg className="animate-spin h-8 w-8 text-primary-600 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-2"></div>
                 <p className="text-xs text-gray-600">Uploading...</p>
               </div>
             </div>
           )}
+          {/* Success indicator */}
+          <div className="absolute top-2 right-2">
+            <span className="px-2 py-1 bg-green-500 text-white text-xs font-medium rounded">
+              ✓ Uploaded
+            </span>
+          </div>
         </div>
       ) : (
         // Show upload area
@@ -172,10 +207,7 @@ const AssetUploader = ({
           </div>
           {uploading && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <svg className="animate-spin h-6 w-6 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
             </div>
           )}
         </div>

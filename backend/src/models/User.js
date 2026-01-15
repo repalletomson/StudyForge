@@ -3,6 +3,7 @@
  */
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { USER_ROLE } = require('./constants');
 
 const userSchema = new mongoose.Schema({
   email: {
@@ -35,8 +36,8 @@ const userSchema = new mongoose.Schema({
   role: {
     type: String,
     required: true,
-    enum: ['admin', 'editor', 'viewer'],
-    default: 'viewer'
+    enum: Object.values(USER_ROLE),
+    default: USER_ROLE.VIEWER
   },
   isActive: {
     type: Boolean,
@@ -70,8 +71,7 @@ const userSchema = new mongoose.Schema({
   }
 });
 
-// Index for performance
-userSchema.index({ email: 1 });
+// Index for performance - remove duplicate email index since unique: true creates it
 userSchema.index({ role: 1 });
 
 /**
@@ -131,5 +131,8 @@ userSchema.methods.hasPermission = function(action) {
   
   return permissions[this.role]?.includes(action) || false;
 };
+
+// Export constants
+userSchema.statics.ROLE = USER_ROLE;
 
 module.exports = mongoose.model('User', userSchema);

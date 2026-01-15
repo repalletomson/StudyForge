@@ -2,6 +2,7 @@
  * Program Asset model for program posters and media
  */
 const mongoose = require('mongoose');
+const { ASSET_VARIANT, PROGRAM_ASSET_TYPE } = require('./constants');
 
 const programAssetSchema = new mongoose.Schema({
   programId: {
@@ -17,12 +18,12 @@ const programAssetSchema = new mongoose.Schema({
   variant: {
     type: String,
     required: true,
-    enum: ['portrait', 'landscape', 'square', 'banner']
+    enum: Object.values(ASSET_VARIANT)
   },
   assetType: {
     type: String,
     required: true,
-    enum: ['poster']
+    enum: Object.values(PROGRAM_ASSET_TYPE)
   },
   url: {
     type: String,
@@ -60,5 +61,10 @@ programAssetSchema.index({
 }, { unique: true });
 
 programAssetSchema.index({ programId: 1 });
+programAssetSchema.index({ programId: 1, language: 1, assetType: 1 });
+
+// Export constants
+programAssetSchema.statics.VARIANT = ASSET_VARIANT;
+programAssetSchema.statics.ASSET_TYPE = PROGRAM_ASSET_TYPE;
 
 module.exports = mongoose.model('ProgramAsset', programAssetSchema);

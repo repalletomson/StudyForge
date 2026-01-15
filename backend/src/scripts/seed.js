@@ -1,35 +1,36 @@
 /**
- * Fresh Database seed script - Creates only essential admin user
+ * Database seed script - Creates comprehensive sample data as required by assignment
  */
-require('dotenv').config();
+require("dotenv").config();
 
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
 // Import models
-const User = require('../models/User');
-const Topic = require('../models/Topic');
-const Program = require('../models/Program');
-const Term = require('../models/Term');
-const Lesson = require('../models/Lesson');
-const ProgramAsset = require('../models/ProgramAsset');
-const LessonAsset = require('../models/LessonAsset');
+const User = require("../models/User");
+const Topic = require("../models/Topic");
+const Program = require("../models/Program");
+const Term = require("../models/Term");
+const Lesson = require("../models/Lesson");
+const ProgramAsset = require("../models/ProgramAsset");
+const LessonAsset = require("../models/LessonAsset");
 
-const logger = require('../config/logger');
+const logger = require("../config/logger");
 
 /**
  * Connect to database
  */
 const connectDatabase = async () => {
   try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/cms_db';
+    const mongoUri =
+      process.env.MONGODB_URI || "mongodb://localhost:27017/cms_db";
     await mongoose.connect(mongoUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
+      maxPoolSize: 5,
+      serverSelectionTimeoutMS: 5000,
     });
-    logger.info('Connected to MongoDB for seeding');
+    logger.info("Connected to MongoDB for seeding");
   } catch (error) {
-    logger.error('Failed to connect to MongoDB:', error);
+    logger.error("Failed to connect to MongoDB:", error);
     process.exit(1);
   }
 };
@@ -46,40 +47,48 @@ const clearData = async () => {
     await Lesson.deleteMany({});
     await ProgramAsset.deleteMany({});
     await LessonAsset.deleteMany({});
-    logger.info('Cleared existing data');
+    logger.info("Cleared existing data");
   } catch (error) {
-    logger.error('Error clearing data:', error);
+    logger.error("Error clearing data:", error);
     throw error;
   }
 };
 
 /**
- * Create essential users (admin and editor only)
+ * Create users for all roles
  */
-const createEssentialUsers = async () => {
+const createUsers = async () => {
   try {
     const users = [
       {
-        firstName: 'Admin',
-        lastName: 'User',
-        email: 'admin@example.com',
-        passwordHash: 'admin123', // Will be hashed by pre-save middleware
-        role: 'admin',
+        firstName: "Admin",
+        lastName: "User",
+        email: "admin@example.com",
+        passwordHash: "admin123",
+        role: "admin",
         isActive: true,
-        emailVerified: true
+        emailVerified: true,
       },
       {
-        firstName: 'Editor',
-        lastName: 'User',
-        email: 'editor@example.com',
-        passwordHash: 'editor123', // Will be hashed by pre-save middleware
-        role: 'editor',
+        firstName: "Editor",
+        lastName: "User",
+        email: "editor@example.com",
+        passwordHash: "editor123",
+        role: "editor",
         isActive: true,
-        emailVerified: true
-      }
+        emailVerified: true,
+      },
+      {
+        firstName: "Viewer",
+        lastName: "User",
+        email: "viewer@example.com",
+        passwordHash: "viewer123",
+        role: "viewer",
+        isActive: true,
+        emailVerified: true,
+      },
     ];
 
-    // Create users individually to trigger pre-save middleware for password hashing
     const createdUsers = [];
     for (const userData of users) {
       const user = new User(userData);
@@ -87,31 +96,140 @@ const createEssentialUsers = async () => {
       createdUsers.push(user);
     }
 
-    logger.info(`Created ${createdUsers.length} essential users`);
+    logger.info(`Created ${createdUsers.length} users`);
     return createdUsers;
   } catch (error) {
-    logger.error('Error creating users:', error);
+    logger.error("Error creating users:", error);
     throw error;
   }
 };
 
 /**
- * Create basic topics
+ * Create topics
  */
-const createBasicTopics = async () => {
+const createTopics = async () => {
   try {
     const topics = [
-      { name: 'Technology', description: 'Programming, web development, and tech skills' },
-      { name: 'Business', description: 'Entrepreneurship, marketing, and business skills' },
-      { name: 'Design', description: 'UI/UX, graphic design, and creative skills' },
-      { name: 'Science', description: 'Mathematics, physics, and scientific concepts' }
+      {
+        name: "Technology",
+        description: "Programming, web development, software engineering, and tech skills",
+        isActive: true,
+      },
+      {
+        name: "Business",
+        description: "Entrepreneurship, marketing, management, and business skills",
+        isActive: true,
+      },
+      {
+        name: "Design",
+        description: "UI/UX, graphic design, web design, and creative skills",
+        isActive: true,
+      },
+      {
+        name: "Science",
+        description: "Mathematics, physics, chemistry, and scientific concepts",
+        isActive: true,
+      },
+      {
+        name: "Mathematics",
+        description: "Algebra, calculus, statistics, and mathematical concepts",
+        isActive: true,
+      },
+      {
+        name: "Language Arts",
+        description: "English, writing, literature, and communication skills",
+        isActive: true,
+      },
+      {
+        name: "Data Science",
+        description: "Data analysis, machine learning, statistics, and data visualization",
+        isActive: true,
+      },
+      {
+        name: "Digital Marketing",
+        description: "SEO, social media marketing, content marketing, and online advertising",
+        isActive: true,
+      },
+      {
+        name: "Personal Development",
+        description: "Leadership, productivity, communication, and self-improvement",
+        isActive: true,
+      },
+      {
+        name: "Health & Fitness",
+        description: "Exercise, nutrition, wellness, and healthy lifestyle",
+        isActive: true,
+      },
+      {
+        name: "Finance",
+        description: "Personal finance, investing, accounting, and financial planning",
+        isActive: true,
+      },
+      {
+        name: "Arts & Crafts",
+        description: "Drawing, painting, crafting, and artistic skills",
+        isActive: true,
+      }
     ];
 
     const createdTopics = await Topic.insertMany(topics);
-    logger.info(`Created ${createdTopics.length} basic topics`);
+    logger.info(`Created ${createdTopics.length} topics`);
     return createdTopics;
   } catch (error) {
-    logger.error('Error creating topics:', error);
+    logger.error("Error creating topics:", error);
+    throw error;
+  }
+};
+
+/**
+ * Create programs with multi-language support
+ */
+const createPrograms = async (topics) => {
+  try {
+    const programs = [
+      {
+        title: "Full Stack Web Development",
+        description:
+          "Complete course on modern web development with React, Node.js, and MongoDB",
+        languagePrimary: "en",
+        languagesAvailable: ["en", "hi"],
+        status: "draft",
+        topicIds: [topics[0]._id, topics[6]._id], // Technology, Data Science
+      },
+      {
+        title: "Digital Marketing Mastery",
+        description:
+          "Learn digital marketing strategies, SEO, social media marketing, and analytics",
+        languagePrimary: "en",
+        languagesAvailable: ["en", "te", "hi"],
+        status: "draft",
+        topicIds: [topics[1]._id, topics[7]._id], // Business, Digital Marketing
+      },
+      {
+        title: "UI/UX Design Fundamentals",
+        description:
+          "Master the principles of user interface and user experience design",
+        languagePrimary: "en",
+        languagesAvailable: ["en", "hi"],
+        status: "draft",
+        topicIds: [topics[2]._id, topics[0]._id], // Design, Technology
+      },
+      {
+        title: "Data Science with Python",
+        description:
+          "Learn data analysis, machine learning, and data visualization with Python",
+        languagePrimary: "en",
+        languagesAvailable: ["en", "hi", "te"],
+        status: "draft",
+        topicIds: [topics[6]._id, topics[4]._id, topics[0]._id], // Data Science, Mathematics, Technology
+      }
+    ];
+
+    const createdPrograms = await Program.insertMany(programs);
+    logger.info(`Created ${createdPrograms.length} programs`);
+    return createdPrograms;
+  } catch (error) {
+    logger.error("Error creating programs:", error);
     throw error;
   }
 };
@@ -121,27 +239,28 @@ const createBasicTopics = async () => {
  */
 const seedDatabase = async () => {
   try {
-    logger.info('Starting fresh database seeding...');
+    logger.info("Starting comprehensive database seeding...");
 
     await connectDatabase();
     await clearData();
 
-    const users = await createEssentialUsers();
-    const topics = await createBasicTopics();
+    const users = await createUsers();
+    const topics = await createTopics();
+    const programs = await createPrograms(topics);
 
-    logger.info('Fresh database seeding completed successfully!');
-    logger.info('Essential login credentials:');
-    logger.info('Admin: admin@example.com / admin123');
-    logger.info('Editor: editor@example.com / editor123');
-    logger.info('');
-    logger.info('Users can now:');
-    logger.info('- Sign up for viewer accounts at /signup');
-    logger.info('- Create courses with YouTube videos');
-    logger.info('- Upload custom thumbnails or use auto-generated ones');
-    logger.info('- Manage their profiles');
-
+    logger.info("Comprehensive database seeding completed successfully!");
+    logger.info("");
+    logger.info("Sample Data Created:");
+    logger.info(`- ${users.length} users (admin, editor, viewer)`);
+    logger.info(`- ${topics.length} topics`);
+    logger.info(`- ${programs.length} programs with multi-language support`);
+    logger.info("");
+    logger.info("Login Credentials:");
+    logger.info("Admin: admin@example.com / admin123");
+    logger.info("Editor: editor@example.com / editor123");
+    logger.info("Viewer: viewer@example.com / viewer123");
   } catch (error) {
-    logger.error('Error seeding database:', error);
+    logger.error("Error seeding database:", error);
     process.exit(1);
   } finally {
     await mongoose.disconnect();

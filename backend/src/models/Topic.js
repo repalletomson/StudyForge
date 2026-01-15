@@ -1,6 +1,3 @@
-/**
- * Topic model for categorizing programs
- */
 const mongoose = require('mongoose');
 
 const topicSchema = new mongoose.Schema({
@@ -9,11 +6,12 @@ const topicSchema = new mongoose.Schema({
     required: true,
     unique: true,
     trim: true,
-    maxlength: 100
+    maxlength: 255
   },
   description: {
     type: String,
-    maxlength: 500
+    trim: true,
+    maxlength: 1000
   },
   isActive: {
     type: Boolean,
@@ -29,14 +27,9 @@ const topicSchema = new mongoose.Schema({
   }
 });
 
-// Index for performance
-topicSchema.index({ name: 1 });
-topicSchema.index({ isActive: 1 });
+// Index for active topics
+topicSchema.index({ isActive: 1, name: 1 });
 
-/**
- * Get programs count for this topic
- * @returns {Promise<number>}
- */
 topicSchema.methods.getProgramsCount = async function() {
   const Program = mongoose.model('Program');
   return Program.countDocuments({ topicIds: this._id });

@@ -119,28 +119,28 @@ const EditUserModal = ({ isOpen, onClose, user }) => {
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         <div 
-          className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 backdrop-blur-sm"
+          className="fixed inset-0 transition-opacity bg-slate-900/75 backdrop-blur-sm"
           onClick={handleClose}
         />
         
-        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-2xl rounded-2xl animate-slide-up">
+        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-slate-900 shadow-2xl rounded-2xl animate-slide-up border border-slate-800">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
-              <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                <FiUser className="w-5 h-5 text-blue-600" />
+              <div className="flex-shrink-0 w-10 h-10 bg-violet-500/20 rounded-lg flex items-center justify-center mr-3">
+                <FiUser className="w-5 h-5 text-violet-400" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900 font-display">
+                <h3 className="text-xl font-bold text-slate-100 font-heading">
                   Edit User
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-slate-400">
                   Update user information and permissions
                 </p>
               </div>
             </div>
             <button
               onClick={handleClose}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
             >
               <FiX className="w-5 h-5" />
             </button>
@@ -157,12 +157,12 @@ const EditUserModal = ({ isOpen, onClose, user }) => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`form-input ${errors.email ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                className={`form-input ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                 placeholder="user@example.com"
                 disabled={updateUserMutation.isLoading}
               />
               {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                <p className="mt-1 text-sm text-red-400">{errors.email}</p>
               )}
             </div>
 
@@ -175,7 +175,7 @@ const EditUserModal = ({ isOpen, onClose, user }) => {
                 name="role"
                 value={formData.role}
                 onChange={handleChange}
-                className={`form-input ${errors.role ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                className={`form-input ${errors.role ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                 disabled={updateUserMutation.isLoading}
               >
                 <option value="viewer">Viewer - Read-only access</option>
@@ -183,18 +183,18 @@ const EditUserModal = ({ isOpen, onClose, user }) => {
                 <option value="admin">Admin - Full system access</option>
               </select>
               {errors.role && (
-                <p className="mt-1 text-sm text-red-600">{errors.role}</p>
+                <p className="mt-1 text-sm text-red-400">{errors.role}</p>
               )}
             </div>
 
             <div>
               <label className="form-label">Account Status</label>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg border border-slate-700">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-slate-200">
                     {formData.isActive ? 'Active' : 'Inactive'}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-slate-400">
                     {formData.isActive 
                       ? 'User can log in and access the system' 
                       : 'User cannot log in or access the system'
@@ -205,7 +205,7 @@ const EditUserModal = ({ isOpen, onClose, user }) => {
                   type="button"
                   onClick={toggleActive}
                   className={`flex-shrink-0 transition-colors ${
-                    formData.isActive ? 'text-green-600' : 'text-gray-400'
+                    formData.isActive ? 'text-emerald-400' : 'text-slate-500'
                   }`}
                   disabled={updateUserMutation.isLoading}
                 >
@@ -219,16 +219,16 @@ const EditUserModal = ({ isOpen, onClose, user }) => {
             </div>
 
             {/* User Info */}
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <h4 className="text-sm font-semibold text-blue-900 mb-2">User Information</h4>
-              <div className="space-y-1 text-xs text-blue-800">
+            <div className="p-4 bg-violet-500/10 rounded-lg border border-violet-500/20">
+              <h4 className="text-sm font-semibold text-violet-300 mb-2">User Information</h4>
+              <div className="space-y-1 text-xs text-violet-200">
                 <p>Created: {new Date(user.createdAt).toLocaleDateString()}</p>
                 <p>Last Login: {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : 'Never'}</p>
                 <p>User ID: {user._id}</p>
               </div>
             </div>
 
-            <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+            <div className="flex items-center justify-end space-x-4 pt-6 border-t border-slate-800">
               <button
                 type="button"
                 onClick={handleClose}
