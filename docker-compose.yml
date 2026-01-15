@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Backend API Service
+  # Backend API Service (with integrated worker)
   backend:
     build:
       context: ./backend
@@ -15,6 +15,7 @@ services:
       - MONGODB_URI=${MONGODB_URI}
       - JWT_SECRET=${JWT_SECRET}
       - CORS_ORIGIN=http://localhost:5173
+      - WORKER_CRON=* * * * *
     volumes:
       - backend_uploads:/app/uploads
     healthcheck:
@@ -38,23 +39,6 @@ services:
     environment:
       - NODE_ENV=production
       - VITE_API_URL=http://localhost:3001
-    depends_on:
-      backend:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - studyforge-network
-
-  # Background Worker Service
-  worker:
-    build:
-      context: ./worker
-      dockerfile: Dockerfile
-    container_name: studyforge-worker
-    environment:
-      - NODE_ENV=production
-      - MONGODB_URI=${MONGODB_URI}
-      - BACKEND_URL=http://backend:3001
     depends_on:
       backend:
         condition: service_healthy

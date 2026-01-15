@@ -11,6 +11,7 @@ const compression = require('compression');
 
 const { connectDatabase } = require('./config/database');
 const { initGridFS } = require('./services/fileUploadService');
+const { startPublishingWorker } = require('./services/publishingWorker');
 const logger = require('./config/logger');
 
 // Import models to ensure they're registered with mongoose
@@ -43,6 +44,9 @@ async function startServer() {
     // Initialize GridFS for file storage
     initGridFS();
 
+    // Start the integrated publishing worker
+    startPublishingWorker();
+
     // Security middleware
     app.use(helmet());
     app.use(cors({
@@ -71,6 +75,26 @@ async function startServer() {
     
     // Asset serving route (public)
     app.get('/api/assets/:fileId', serveAsset);
+
+    // Worker trigger endpoint (for testing)
+    app.post('/api/admin/trigger-publishing', async (req, res) => {
+      try {
+        const { triggerPublishing } = require('./services/publishingWorker');
+        await triggerPublishing();
+        res.json({ 
+          success: true, 
+          message: 'Publishing worker triggered successfully',
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error('Manual publishing trigger failed:', error);
+        res.status(500).json({ 
+          success: false, 
+          message: 'Failed to trigger publishing worker',
+          error: error.message 
+        });
+      }
+    });
 
     // Error handling
     app.use(errorHandler);
