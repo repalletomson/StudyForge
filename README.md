@@ -51,10 +51,10 @@ A modern, full-stack educational content management system built with React, Nod
 - **Backend API**: https://studyforge-gwqy.onrender.com/
 - **API Endpoint**: https://api.studyforge.example.com
 - **Health Check**: https://studyforge-gwqy.onrender.com/health
-- **Public Catalog**: 
-            **Programs** : https://studyforge-gwqy.onrender.com/catalog/programs
-           **ProgramsDetail** : https://studyforge-gwqy.onrender.com/catalog/programs/{programId}
-            **Topics** : https://studyforge-gwqy.onrender.com/catalog/topics
+- **Public Catalog**:
+- Programs: https://studyforge-gwqy.onrender.com/catalog/programs ,
+- ProgramsDetail : https://studyforge-gwqy.onrender.com/catalog/programs/{programId}
+- Topics : https://studyforge-gwqy.onrender.com/catalog/topics
 
 **Demo Credentials:**
 - Admin: `admin@example.com` / `admin123`
