@@ -36,7 +36,6 @@ A modern, full-stack educational content management system built with React, Nod
 - **Backend (Node.js)**: RESTful API with authentication and file handling
 - **Worker Process**: Background job processing for scheduled publishing
 - **Database (MongoDB Atlas)**: Cloud-hosted document database
-- **Reverse Proxy (nginx)**: SSL termination and load balancing
 
 ## 🚀 Local Setup Steps
 
@@ -45,6 +44,23 @@ A modern, full-stack educational content management system built with React, Nod
 - Docker and Docker Compose
 - MongoDB Atlas account
 
+## 🌐 Deployed URLs
+
+### Production Environment
+ -**Frontend**: https://study-forge-gold.vercel.app/
+- **Backend API**: https://studyforge-gwqy.onrender.com/
+- **API Endpoint**: https://api.studyforge.example.com
+- **Health Check**: https://studyforge-gwqy.onrender.com/health
+- **Public Catalog**: 
+            **Programs** : https://studyforge-gwqy.onrender.com/catalog/programs
+           **ProgramsDetail** : https://studyforge-gwqy.onrender.com/catalog/programs/{programId}
+            **Topics** : https://studyforge-gwqy.onrender.com/catalog/topics
+
+**Demo Credentials:**
+- Admin: `admin@example.com` / `admin123`
+- Editor: `editor@example.com` / `editor123`  
+- Viewer: `viewer@example.com` / `viewer123`
+  
 ### 1. Clone and Configure
 ```bash
 git clone <repository-url>
@@ -96,7 +112,7 @@ cd worker && npm run dev
 ```
 
 ### 6. Access Application
-- **Frontend**: http://localhost:5173
+- **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:3001
 - **API Health**: http://localhost:3001/health
 
@@ -133,23 +149,6 @@ Seed script creates:
 - **12 Topics**: Technology, Business, Design, Science, etc.
 - **4 Programs**: Sample educational programs with multi-language support
 - **Sample Assets**: Placeholder images and media files
-
-**Demo Credentials:**
-- Admin: `admin@example.com` / `admin123`
-- Editor: `editor@example.com` / `editor123`  
-- Viewer: `viewer@example.com` / `viewer123`
-
-## 🌐 Deployed URLs
-
-### Production Environment
-- **Web Application**: https://studyforge.example.com
-- **API Endpoint**: https://api.studyforge.example.com
-- **Health Check**: https://api.studyforge.example.com/health
-- **Public Catalog**: https://studyforge.example.com/catalog
-
-### Staging Environment
-- **Web Application**: https://staging.studyforge.example.com
-- **API Endpoint**: https://api-staging.studyforge.example.com
 
 ## 🎯 Complete Demo Flow
 
@@ -205,10 +204,7 @@ Seed script creates:
 1. **Monitor Worker Process:**
    - Worker runs every minute checking for scheduled content
    - Wait for the scheduled time to pass (2+ minutes)
-   - Check backend logs for publishing activity:
-     ```bash
-     docker-compose logs worker
-     ```
+   - Check backend logs for publishing activity
 
 2. **Verify Auto-Publishing:**
    - Refresh the lesson page
@@ -239,101 +235,8 @@ Seed script creates:
    - Test immediate publishing (status: "Published")
    - Test archiving workflow (status: "Archived")
 
-## 🔧 Development Commands
-
-```bash
-# Backend
-npm run dev          # Start development server
-npm run start        # Start production server
-npm run seed         # Seed database
-npm run migrate      # Run migrations
-
-# Frontend  
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run preview      # Preview production build
-
-# Worker
-npm run dev          # Start development worker
-npm run start        # Start production worker
-
 # Docker
 docker-compose up -d              # Start all services
-docker-compose -f docker-compose.prod.yml up -d  # Production
+docker-compose -f docker-compose.yml up -d  # Production
 docker-compose logs -f worker     # View worker logs
 ```
-
-## 📁 Project Structure
-
-```
-studyforge/
-├── backend/                 # Node.js API Server
-│   ├── src/
-│   │   ├── controllers/     # Route handlers
-│   │   ├── models/         # MongoDB schemas
-│   │   ├── routes/         # API routes
-│   │   ├── middleware/     # Auth, validation, etc.
-│   │   ├── scripts/        # Migration & seed scripts
-│   │   └── config/         # Database, logging config
-│   ├── Dockerfile
-│   └── package.json
-├── frontend/               # React Application
-│   ├── src/
-│   │   ├── components/     # Reusable UI components
-│   │   ├── pages/          # Route components
-│   │   ├── services/       # API client functions
-│   │   ├── contexts/       # React contexts
-│   │   └── utils/          # Helper functions
-│   ├── public/             # Static assets
-│   ├── Dockerfile
-│   └── package.json
-├── worker/                 # Background Job Processor
-│   ├── src/
-│   │   ├── models/         # Shared data models
-│   │   └── worker.js       # Main worker process
-│   └── package.json
-├── nginx/                  # Reverse Proxy Config
-│   └── nginx.conf
-├── docker-compose.yml      # Development setup
-├── docker-compose.prod.yml # Production setup
-└── README.md
-```
-
-## 🔒 Security & Production Features
-
-- **Authentication**: JWT-based with role-based access control
-- **Input Validation**: Comprehensive request validation
-- **Rate Limiting**: API endpoint protection
-- **File Upload Security**: Type validation and size limits  
-- **CORS Protection**: Configurable origin restrictions
-- **SSL/TLS**: nginx handles certificate management
-- **Health Monitoring**: Endpoint monitoring and logging
-- **Error Handling**: Structured error responses and logging
-
-## 📊 Monitoring & Logging
-
-- **Health Checks**: `/health` endpoint for all services
-- **Structured Logging**: Winston with daily log rotation
-- **Docker Health Checks**: Container health monitoring
-- **Worker Status**: Background job processing logs
-- **Database Monitoring**: MongoDB Atlas built-in monitoring
-
-## 🚀 Deployment
-
-### Production Deployment
-```bash
-# Build and deploy all services
-docker-compose -f docker-compose.prod.yml up -d
-
-# Run initial setup
-docker-compose exec backend npm run migrate
-docker-compose exec backend npm run seed
-
-# Monitor services
-docker-compose logs -f
-```
-
-### Environment-Specific Configs
-- **Development**: Hot reloading, debug logging, local file storage
-- **Staging**: Production builds, staging database, SSL certificates
-- **Production**: Optimized builds, CDN integration, monitoring alerts
