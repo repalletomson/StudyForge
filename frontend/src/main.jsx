@@ -7,6 +7,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { ReactQueryDevtools } from 'react-query/devtools';
 import { Toaster } from 'react-hot-toast';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
@@ -58,6 +59,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               },
             }}
           />
+          <SpeedInsights />
         </AuthProvider>
       </BrowserRouter>
       <ReactQueryDevtools initialIsOpen={false} />
