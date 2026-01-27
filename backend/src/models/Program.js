@@ -82,22 +82,6 @@ programSchema.methods.autoPublish = async function() {
 };
 
 /**
- * Auto-draft program when no published lessons remain
- */
-programSchema.methods.autoDraft = async function() {
-  if (this.status === PROGRAM_STATUS.PUBLISHED) {
-    const publishedLessonsCount = await this.getPublishedLessonsCount();
-    if (publishedLessonsCount === 0) {
-      this.status = PROGRAM_STATUS.DRAFT;
-      this.publishedAt = null;
-      this.publishedLanguages = [];
-      return this.save();
-    }
-  }
-  return this;
-};
-
-/**
  * Get terms count for this program
  * @returns {Promise<number>}
  */

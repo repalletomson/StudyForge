@@ -288,14 +288,6 @@ const deleteLesson = async (req, res, next) => {
       throw createError('Lesson not found', 404, 'RESOURCE_NOT_FOUND');
     }
 
-    // Get the term and program info before deletion
-    const term = await Term.findById(lesson.termId);
-    let program = null;
-    if (term) {
-      const Program = require('../models/Program');
-      program = await Program.findById(term.programId);
-    }
-
     // Delete all related data
     const LessonAsset = require('../models/LessonAsset');
     
@@ -305,27 +297,9 @@ const deleteLesson = async (req, res, next) => {
     // Delete the lesson itself
     await Lesson.findByIdAndDelete(req.params.id);
 
-    // Check if program should be reverted to draft status
-    if (program && program.status === 'published') {
-      const wasReverted = await program.autoDraft();
-      
-      if (wasReverted && program.status === 'draft') {
-        logger.info('Program reverted to draft status - no published lessons remain', {
-          programId: program._id,
-          programTitle: program.title,
-          lessonId: lesson._id,
-          lessonTitle: lesson.title,
-          userId: req.user._id,
-          correlationId: req.correlationId
-        });
-      }
-    }
-
     logger.info('Lesson and related data deleted', {
       lessonId: lesson._id,
       title: lesson.title,
-      programId: program?._id,
-      programReverted: program && program.status === 'draft',
       userId: req.user._id,
       correlationId: req.correlationId
     });
@@ -416,34 +390,8 @@ const archiveLesson = async (req, res, next) => {
       throw createError('Lesson not found', 404, 'RESOURCE_NOT_FOUND');
     }
 
-    const wasPublished = lesson.status === 'published';
-
     // Use the lesson's archive method which handles status transitions
     await lesson.archive();
-
-    // If the lesson was published and is now archived, check if program should be reverted to draft
-    if (wasPublished) {
-      const term = await Term.findById(lesson.termId);
-      if (term) {
-        const Program = require('../models/Program');
-        const program = await Program.findById(term.programId);
-        
-        if (program && program.status === 'published') {
-          const wasReverted = await program.autoDraft();
-          
-          if (wasReverted && program.status === 'draft') {
-            logger.info('Program reverted to draft status - no published lessons remain after archiving', {
-              programId: program._id,
-              programTitle: program.title,
-              lessonId: lesson._id,
-              lessonTitle: lesson.title,
-              userId: req.user._id,
-              correlationId: req.correlationId
-            });
-          }
-        }
-      }
-    }
 
     logger.info('Lesson archived', {
       lessonId: lesson._id,
