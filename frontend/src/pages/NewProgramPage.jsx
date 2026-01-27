@@ -2,7 +2,7 @@
  * New Program Page Component
  * Dedicated page for creating new programs
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import * as programApi from '../services/programApi';
 import * as topicApi from '../services/topicApi';
 import AssetInput from '../components/ui/AssetInput';
+import { trackPageLoad } from '../utils/speedInsights';
 
 const NewProgramPage = () => {
   const navigate = useNavigate();
@@ -125,6 +126,17 @@ const NewProgramPage = () => {
 
   // Form submission
   const onSubmit = async (data) => {
+    // Validate required assets
+    if (!assets.portrait || !assets.portrait.trim()) {
+      toast.error('Portrait poster is required');
+      return;
+    }
+    
+    if (!assets.landscape || !assets.landscape.trim()) {
+      toast.error('Landscape poster is required');
+      return;
+    }
+    
     const youtubeVideoId = extractYouTubeId(data.youtubeUrl);
     
     const programData = {
@@ -136,7 +148,7 @@ const NewProgramPage = () => {
       assets: {
         posters: {
           [primaryLanguage]: Object.entries(assets)
-            .filter(([_, url]) => url.trim())
+            .filter(([_, url]) => url && url.trim())
             .reduce((acc, [variant, url]) => {
               acc[variant] = url.trim();
               return acc;
@@ -147,6 +159,15 @@ const NewProgramPage = () => {
     
     createProgramMutation.mutate(programData);
   };
+
+  // Check if required assets are provided
+  const hasRequiredAssets = assets.portrait && assets.portrait.trim() && 
+                           assets.landscape && assets.landscape.trim();
+
+  // Track page load for performance monitoring
+  useEffect(() => {
+    trackPageLoad('New Program Page');
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -174,7 +195,7 @@ const NewProgramPage = () => {
             </button>
             <button
               onClick={handleSubmit(onSubmit)}
-              disabled={createProgramMutation.isLoading}
+              disabled={createProgramMutation.isLoading || !hasRequiredAssets}
               className="px-6 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             >
               {createProgramMutation.isLoading ? (
@@ -188,7 +209,7 @@ const NewProgramPage = () => {
               ) : (
                 <>
                   <FiSave className="w-4 h-4 mr-2" />
-                  Create Program
+                  {hasRequiredAssets ? 'Create Program' : 'Add Required Assets'}
                 </>
               )}
             </button>
@@ -295,6 +316,7 @@ const NewProgramPage = () => {
                     placeholder="https://example.com/portrait-poster.jpg"
                     aspectRatio="3:4"
                     compact={true}
+                    required={true}
                   />
                   <AssetInput
                     label="Landscape Poster"
@@ -303,6 +325,7 @@ const NewProgramPage = () => {
                     placeholder="https://example.com/landscape-poster.jpg"
                     aspectRatio="4:3"
                     compact={true}
+                    required={true}
                   />
                   <AssetInput
                     label="Square Poster"
@@ -322,9 +345,9 @@ const NewProgramPage = () => {
                   />
                 </div>
                 
-                <div className="mt-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
-                  <p className="text-sm text-gray-400">
-                    <strong>Note:</strong> Portrait and landscape posters are required for publishing. All images should be high-quality and represent your program content.
+                <div className="mt-4 p-3 bg-amber-900/20 rounded-lg border border-amber-800">
+                  <p className="text-sm text-amber-200">
+                    <strong>Required:</strong> Portrait and landscape posters are mandatory.
                   </p>
                 </div>
               </div>

@@ -48,7 +48,28 @@ async function startServer() {
     startPublishingWorker();
 
     // Security middleware
-    app.use(helmet());
+    app.use(helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'"],
+          imgSrc: ["'self'", "data:", "https:"],
+        },
+      },
+    }));
+    
+    // Compression middleware for better performance
+    app.use(compression({
+      filter: (req, res) => {
+        if (req.headers['x-no-compression']) {
+          return false;
+        }
+        return compression.filter(req, res);
+      },
+      level: 6,
+      threshold: 1024
+    }));
     
     // CORS configuration - allow multiple origins
     const allowedOrigins = [
@@ -69,9 +90,6 @@ async function startServer() {
       credentials: true
     }));
 
-    // General middleware
-    app.use(compression());
-    
     // JSON parsing with proper error handling
     app.use(express.json({ 
       limit: '10mb'
@@ -81,6 +99,15 @@ async function startServer() {
     // Logging middleware
     app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
     app.use(requestLogger);
+
+    // Cache headers for static assets
+    app.use('/api/assets', (req, res, next) => {
+      res.set({
+        'Cache-Control': 'public, max-age=31536000', // 1 year
+        'ETag': `"${Date.now()}"`,
+      });
+      next();
+    });
 
     // Root route
     app.get('/', (req, res) => {

@@ -182,6 +182,17 @@ const EditProgramPage = () => {
 
   // Form submission
   const onSubmit = async (data) => {
+    // Validate required assets
+    if (!assets.portrait || !assets.portrait.trim()) {
+      toast.error('Portrait poster is required');
+      return;
+    }
+    
+    if (!assets.landscape || !assets.landscape.trim()) {
+      toast.error('Landscape poster is required');
+      return;
+    }
+    
     const youtubeVideoId = extractYouTubeId(data.youtubeUrl);
     
     const programData = {
@@ -204,6 +215,10 @@ const EditProgramPage = () => {
     
     updateProgramMutation.mutate(programData);
   };
+
+  // Check if required assets are provided
+  const hasRequiredAssets = assets.portrait && assets.portrait.trim() && 
+                           assets.landscape && assets.landscape.trim();
 
   if (programLoading) {
     return (
@@ -268,7 +283,7 @@ const EditProgramPage = () => {
             )}
             <button
               onClick={handleSubmit(onSubmit)}
-              disabled={updateProgramMutation.isLoading}
+              disabled={updateProgramMutation.isLoading || !hasRequiredAssets}
               className="px-6 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             >
               {updateProgramMutation.isLoading ? (
@@ -282,7 +297,7 @@ const EditProgramPage = () => {
               ) : (
                 <>
                   <FiSave className="w-4 h-4 mr-2" />
-                  Update Program
+                  {hasRequiredAssets ? 'Update Program' : 'Add Required Assets'}
                 </>
               )}
             </button>
@@ -389,6 +404,7 @@ const EditProgramPage = () => {
                     placeholder="https://example.com/portrait-poster.jpg"
                     aspectRatio="3:4"
                     compact={true}
+                    required={true}
                   />
                   <AssetInput
                     label="Landscape Poster"
@@ -397,6 +413,7 @@ const EditProgramPage = () => {
                     placeholder="https://example.com/landscape-poster.jpg"
                     aspectRatio="4:3"
                     compact={true}
+                    required={true}
                   />
                   <AssetInput
                     label="Square Poster"
@@ -416,8 +433,11 @@ const EditProgramPage = () => {
                   />
                 </div>
                 
-                <div className="mt-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
-                  <p className="text-sm text-gray-400">
+                <div className="mt-4 p-3 bg-amber-900/20 rounded-lg border border-amber-800">
+                  <p className="text-sm text-amber-200">
+                    <strong>Required:</strong> Portrait and landscape posters are mandatory.
+                  </p>
+                </div>
                     <strong>Note:</strong> Portrait and landscape posters are required for publishing. All images should be high-quality and represent your program content.
                   </p>
                 </div>

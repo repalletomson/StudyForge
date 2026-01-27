@@ -1,8 +1,10 @@
 /**
  * Responsive Image Component
  * Shows different image variants based on screen size
+ * Rejects placeholder images and only shows user-uploaded content
  */
 import { useState, useEffect } from 'react';
+import { getBestImageUrl, validateImageUrl } from '../../utils/imageUtils';
 
 const ResponsiveImage = ({ 
   assets, 
@@ -30,20 +32,12 @@ const ResponsiveImage = ({
   const getResponsiveImageUrl = () => {
     if (!assets) return null;
     
-    // Handle both singular and plural asset keys for backward compatibility
-    // For programs: assets.posters.en or assets.poster.en
-    // For lessons: assets.thumbnails.en or assets.thumbnail.en
-    const assetGroup = assets.posters?.en || assets.poster?.en || 
-                      assets.thumbnails?.en || assets.thumbnail?.en;
-    if (!assetGroup) return null;
-
-    // Mobile: prioritize portrait, fallback to landscape
-    if (isMobile) {
-      return assetGroup.portrait || assetGroup.landscape || assetGroup.square || assetGroup.banner;
-    }
+    // Use utility function to get best image, prioritizing based on screen size
+    const preferredVariant = isMobile ? 'portrait' : 'landscape';
+    const imageUrl = getBestImageUrl(assets, 'en', preferredVariant);
     
-    // Desktop: prioritize landscape, fallback to portrait
-    return assetGroup.landscape || assetGroup.portrait || assetGroup.square || assetGroup.banner;
+    // Double-check that the URL is valid and not a placeholder
+    return validateImageUrl(imageUrl);
   };
 
   const imageUrl = getResponsiveImageUrl();
