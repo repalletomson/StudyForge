@@ -5,6 +5,7 @@ const Program = require("../models/Program");
 const Topic = require("../models/Topic");
 const ProgramAsset = require("../models/ProgramAsset");
 const logger = require("../config/logger");
+const { validateProgramAssets, validateAssetUrl } = require('../utils/assetValidation');
 
 /**
  * Create application error
@@ -34,6 +35,18 @@ const updateProgramAssets = async (req, res, next) => {
     // Validate required fields
     if (!language || !assetType || !assets) {
       throw createError("Language, asset type, and assets are required", 400, "VALIDATION_ERROR");
+    }
+
+    // Validate asset URLs and reject placeholders
+    for (const [variant, url] of Object.entries(assets)) {
+      const urlValidation = validateAssetUrl(url);
+      if (!urlValidation.isValid) {
+        throw createError(
+          `Invalid ${variant} asset: ${urlValidation.error}`,
+          400,
+          "VALIDATION_ERROR"
+        );
+      }
     }
 
     // Delete existing assets for this program/language/type combination
@@ -222,6 +235,16 @@ const createProgram = async (req, res, next) => {
     if (!title || !languagePrimary || !languagesAvailable) {
       throw createError(
         "Title, primary language, and available languages are required",
+        400,
+        "VALIDATION_ERROR"
+      );
+    }
+
+    // Validate required assets
+    const assetValidation = validateProgramAssets(assets, languagePrimary);
+    if (!assetValidation.isValid) {
+      throw createError(
+        assetValidation.error,
         400,
         "VALIDATION_ERROR"
       );
