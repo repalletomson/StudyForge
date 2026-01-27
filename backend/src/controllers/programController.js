@@ -116,12 +116,13 @@ const getPrograms = async (req, res, next) => {
 
     // Handle cursor pagination
     if (cursor) {
-      filter._id = { $gt: cursor };
+      // When sorting by createdAt desc, we want documents created before the cursor date
+      filter.createdAt = { $lt: new Date(cursor) };
     }
 
     const programs = await Program.find(filter)
       .populate("topicIds", "name")
-      .sort({ _id: 1 })
+      .sort({ createdAt: -1 })
       .limit(parseInt(limit) + 1);
 
     // Check if there are more results
@@ -204,7 +205,7 @@ const getPrograms = async (req, res, next) => {
     res.json({
       programs: programsWithAssets,
       pagination: {
-        cursor: hasMore ? programs[programs.length - 1]._id : null,
+        cursor: hasMore ? programs[programs.length - 1].createdAt : null,
         hasMore,
       },
     });
