@@ -223,9 +223,24 @@ const EditLessonModal = ({ isOpen, onClose, lesson }) => {
     onClose();
   };
 
+  // Check if required assets are provided
+  const hasRequiredAssets = assets.portrait && assets.portrait.trim() && 
+                           assets.landscape && assets.landscape.trim();
+
   const onSubmit = (data) => {
     console.log('🚀 EditLessonModal: Submitting form data:', data);
     console.log('📊 Current contentType state:', contentType);
+    
+    // Validate required assets
+    if (!assets.portrait || !assets.portrait.trim()) {
+      toast.error('Portrait thumbnail is required');
+      return;
+    }
+    
+    if (!assets.landscape || !assets.landscape.trim()) {
+      toast.error('Landscape thumbnail is required');
+      return;
+    }
     
     // Validate schedule if needed
     if (publishAction === 'schedule') {
@@ -503,13 +518,16 @@ const EditLessonModal = ({ isOpen, onClose, lesson }) => {
               
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Portrait Thumbnail</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Portrait Thumbnail <span className="text-red-400">*</span>
+                  </label>
                   <AssetInput
                     value={assets.portrait}
                     onChange={(value) => setAssets(prev => ({ ...prev, portrait: value }))}
                     placeholder="https://example.com/portrait.jpg"
                     aspectRatio="3:4"
                     compact={true}
+                    required={true}
                     className="w-full"
                   />
                   {assets.portrait && (
@@ -525,13 +543,16 @@ const EditLessonModal = ({ isOpen, onClose, lesson }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Landscape Thumbnail</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Landscape Thumbnail <span className="text-red-400">*</span>
+                  </label>
                   <AssetInput
                     value={assets.landscape}
                     onChange={(value) => setAssets(prev => ({ ...prev, landscape: value }))}
                     placeholder="https://example.com/landscape.jpg"
                     aspectRatio="16:9"
                     compact={true}
+                    required={true}
                     className="w-full"
                   />
                   {assets.landscape && (
@@ -567,6 +588,12 @@ const EditLessonModal = ({ isOpen, onClose, lesson }) => {
                     </div>
                   )}
                 </div>
+              </div>
+              
+              <div className="p-3 bg-amber-900/20 rounded-lg border border-amber-800">
+                <p className="text-sm text-amber-200">
+                  <strong>Required:</strong> Portrait and landscape thumbnails are mandatory.
+                </p>
               </div>
             </div>
 
@@ -655,7 +682,7 @@ const EditLessonModal = ({ isOpen, onClose, lesson }) => {
                   type="button"
                   onClick={handleClose}
                   className="inline-flex items-center px-4 py-2 border border-gray-700 text-sm font-medium rounded-md text-gray-300 bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
-                  disabled={updateLessonMutation.isLoading || publishLessonMutation.isLoading || scheduleLessonMutation.isLoading || archiveLessonMutation.isLoading}
+                  disabled={updateLessonMutation.isLoading || publishLessonMutation.isLoading || scheduleLessonMutation.isLoading || archiveLessonMutation.isLoading || !hasRequiredAssets}
                 >
                   Cancel
                 </button>
@@ -674,7 +701,7 @@ const EditLessonModal = ({ isOpen, onClose, lesson }) => {
                       ? 'bg-gray-600 hover:bg-gray-700 focus:ring-gray-500'
                       : 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-500'
                   }`}
-                  disabled={updateLessonMutation.isLoading || publishLessonMutation.isLoading || scheduleLessonMutation.isLoading || archiveLessonMutation.isLoading}
+                  disabled={updateLessonMutation.isLoading || publishLessonMutation.isLoading || scheduleLessonMutation.isLoading || archiveLessonMutation.isLoading || !hasRequiredAssets}
                 >
                   {(updateLessonMutation.isLoading || publishLessonMutation.isLoading || scheduleLessonMutation.isLoading || archiveLessonMutation.isLoading) ? (
                     <>

@@ -86,8 +86,51 @@ const validateProgramAssets = (assets, languagePrimary) => {
   return { isValid: true };
 };
 
+/**
+ * Validate lesson assets
+ */
+const validateLessonAssets = (assets, languagePrimary) => {
+  // Check if assets object exists and has the right structure
+  if (!assets || typeof assets !== 'object') {
+    return { isValid: false, error: 'Portrait and landscape thumbnails are required' };
+  }
+
+  if (!assets.thumbnails || typeof assets.thumbnails !== 'object') {
+    return { isValid: false, error: 'Portrait and landscape thumbnails are required' };
+  }
+
+  if (!assets.thumbnails[languagePrimary] || typeof assets.thumbnails[languagePrimary] !== 'object') {
+    return { isValid: false, error: 'Portrait and landscape thumbnails are required' };
+  }
+
+  const requiredVariants = ['portrait', 'landscape'];
+  const thumbnailAssets = assets.thumbnails[languagePrimary];
+  
+  for (const variant of requiredVariants) {
+    const url = thumbnailAssets[variant];
+    
+    if (!url || typeof url !== 'string' || !url.trim()) {
+      return { 
+        isValid: false, 
+        error: `${variant.charAt(0).toUpperCase() + variant.slice(1)} thumbnail is required` 
+      };
+    }
+
+    const urlValidation = validateAssetUrl(url.trim());
+    if (!urlValidation.isValid) {
+      return { 
+        isValid: false, 
+        error: `${variant.charAt(0).toUpperCase() + variant.slice(1)} thumbnail: ${urlValidation.error}` 
+      };
+    }
+  }
+
+  return { isValid: true };
+};
+
 module.exports = {
   isPlaceholderImage,
   validateAssetUrl,
-  validateProgramAssets
+  validateProgramAssets,
+  validateLessonAssets
 };

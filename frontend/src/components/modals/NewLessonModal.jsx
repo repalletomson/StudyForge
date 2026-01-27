@@ -165,7 +165,22 @@ const NewLessonModal = ({ isOpen, onClose, termId }) => {
     onClose();
   };
 
+  // Check if required assets are provided
+  const hasRequiredAssets = assets.portrait && assets.portrait.trim() && 
+                           assets.landscape && assets.landscape.trim();
+
   const onSubmit = (data) => {
+    // Validate required assets
+    if (!assets.portrait || !assets.portrait.trim()) {
+      toast.error('Portrait thumbnail is required');
+      return;
+    }
+    
+    if (!assets.landscape || !assets.landscape.trim()) {
+      toast.error('Landscape thumbnail is required');
+      return;
+    }
+
     // Validate schedule if needed
     if (publishAction === 'schedule') {
       if (!scheduleDate || !scheduleTime) {
@@ -433,13 +448,16 @@ const NewLessonModal = ({ isOpen, onClose, termId }) => {
               
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Portrait Thumbnail</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Portrait Thumbnail <span className="text-red-400">*</span>
+                  </label>
                   <AssetInput
                     value={assets.portrait}
                     onChange={(value) => setAssets(prev => ({ ...prev, portrait: value }))}
                     placeholder="https://example.com/portrait.jpg"
                     aspectRatio="3:4"
                     compact={true}
+                    required={true}
                     className="w-full"
                   />
                   {assets.portrait && (
@@ -455,13 +473,16 @@ const NewLessonModal = ({ isOpen, onClose, termId }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Landscape Thumbnail</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Landscape Thumbnail <span className="text-red-400">*</span>
+                  </label>
                   <AssetInput
                     value={assets.landscape}
                     onChange={(value) => setAssets(prev => ({ ...prev, landscape: value }))}
                     placeholder="https://example.com/landscape.jpg"
                     aspectRatio="16:9"
                     compact={true}
+                    required={true}
                     className="w-full"
                   />
                   {assets.landscape && (
@@ -497,6 +518,12 @@ const NewLessonModal = ({ isOpen, onClose, termId }) => {
                     </div>
                   )}
                 </div>
+              </div>
+              
+              <div className="p-3 bg-amber-900/20 rounded-lg border border-amber-800">
+                <p className="text-sm text-amber-200">
+                  <strong>Required:</strong> Portrait and landscape thumbnails are mandatory.
+                </p>
               </div>
             </div>
 
@@ -562,8 +589,8 @@ const NewLessonModal = ({ isOpen, onClose, termId }) => {
                       : publishAction === 'schedule'
                       ? 'bg-violet-600 hover:bg-violet-700 focus:ring-violet-500'
                       : 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-500'
-                  }`}
-                  disabled={createLessonMutation.isLoading || publishLessonMutation.isLoading || scheduleLessonMutation.isLoading}
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  disabled={createLessonMutation.isLoading || publishLessonMutation.isLoading || scheduleLessonMutation.isLoading || !hasRequiredAssets}
                 >
                   {(createLessonMutation.isLoading || publishLessonMutation.isLoading || scheduleLessonMutation.isLoading) ? (
                     <>
@@ -578,17 +605,17 @@ const NewLessonModal = ({ isOpen, onClose, termId }) => {
                       {publishAction === 'publish' ? (
                         <>
                           <FiUpload className="w-4 h-4 mr-2" />
-                          Publish Now
+                          {hasRequiredAssets ? 'Publish Now' : 'Add Required Assets'}
                         </>
                       ) : publishAction === 'schedule' ? (
                         <>
                           <FiCalendar className="w-4 h-4 mr-2" />
-                          Schedule Lesson
+                          {hasRequiredAssets ? 'Schedule Lesson' : 'Add Required Assets'}
                         </>
                       ) : (
                         <>
                           <FiArchive className="w-4 h-4 mr-2" />
-                          Create Lesson
+                          {hasRequiredAssets ? 'Create Lesson' : 'Add Required Assets'}
                         </>
                       )}
                     </>
