@@ -82,6 +82,23 @@ async function startServer() {
     app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
     app.use(requestLogger);
 
+    // Root route
+    app.get('/', (req, res) => {
+      res.json({
+        message: 'StudyForge Backend API',
+        version: '1.0.0',
+        status: 'running',
+        timestamp: new Date().toISOString(),
+        endpoints: {
+          health: '/health',
+          auth: '/api/auth',
+          admin: '/api/admin',
+          catalog: '/catalog',
+          assets: '/api/assets/:fileId'
+        }
+      });
+    });
+
     // Routes
     app.use('/health', healthRoutes);
     app.use('/api/auth', authRoutes);
