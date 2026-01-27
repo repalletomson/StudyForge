@@ -49,7 +49,7 @@ const LoginPage = () => {
         
         {/* Login Form */}
         <div className="card">
-          <div className="card-body">
+        <div className="card-body">
             <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
               <div>
                 <label htmlFor="email" className="form-label">

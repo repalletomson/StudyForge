@@ -124,7 +124,7 @@ const updateTerm = async (req, res, next) => {
 
 /**
  * DELETE /api/admin/terms/:id
- * Delete term
+ * Delete term and all associated lessons
  */
 const deleteTerm = async (req, res, next) => {
   try {
@@ -133,10 +133,47 @@ const deleteTerm = async (req, res, next) => {
       throw createError('Term not found', 404, 'RESOURCE_NOT_FOUND');
     }
 
+    // Get the program before deletion
+    const program = await Program.findById(term.programId);
+
+    // Delete all lessons associated with this term
+    const Lesson = require('../models/Lesson');
+    const LessonAsset = require('../models/LessonAsset');
+    
+    const lessons = await Lesson.find({ termId: term._id });
+    
+    // Delete lesson assets for all lessons in this term
+    for (const lesson of lessons) {
+      await LessonAsset.deleteMany({ lessonId: lesson._id });
+    }
+    
+    // Delete all lessons in this term
+    await Lesson.deleteMany({ termId: term._id });
+
+    // Delete the term itself
     await Term.findByIdAndDelete(req.params.id);
 
-    logger.info('Term deleted', {
+    // Check if program should be reverted to draft status
+    if (program && program.status === 'published') {
+      const wasReverted = await program.autoDraft();
+      
+      if (wasReverted && program.status === 'draft') {
+        logger.info('Program reverted to draft status - no published lessons remain after term deletion', {
+          programId: program._id,
+          programTitle: program.title,
+          termId: term._id,
+          deletedLessonsCount: lessons.length,
+          userId: req.user._id,
+          correlationId: req.correlationId
+        });
+      }
+    }
+
+    logger.info('Term and associated lessons deleted', {
       termId: term._id,
+      programId: term.programId,
+      deletedLessonsCount: lessons.length,
+      programReverted: program && program.status === 'draft',
       userId: req.user._id,
       correlationId: req.correlationId
     });

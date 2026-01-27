@@ -26,7 +26,7 @@ const DashboardLayout = () => {
   const location = useLocation();
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: FiHome, current: location.pathname === '/dashboard' },
+    // { name: 'Dashboard', href: '/dashboard', icon: FiHome, current: location.pathname === '/dashboard' },
     { name: 'Programs', href: '/dashboard/programs', icon: FiBook, current: location.pathname.startsWith('/dashboard/programs') },
     { name: 'Publishing', href: '/dashboard/publishing', icon: FiBell, current: location.pathname === '/dashboard/publishing' },
     ...(hasRole('admin') ? [
