@@ -173,76 +173,41 @@ const UsersPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <div className="card">
           <div className="card-body">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-violet-500/20 rounded-lg flex items-center justify-center">
-                  <FiUser className="w-5 h-5 text-violet-400" />
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-slate-400">User</p>
-                <p className="text-2xl font-bold text-slate-100">{userStats.total}</p>
-              </div>
+            <div>
+              <p className="text-sm font-medium text-slate-400">User</p>
+              <p className="text-2xl font-bold text-slate-100">{userStats.total}</p>
             </div>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                  <span className="text-emerald-400 font-bold text-sm">✓</span>
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-slate-400">Current Role</p>
-                <p className="text-2xl font-bold text-slate-100">{userStats.active}</p>
-              </div>
+            <div>
+              <p className="text-sm font-medium text-slate-400">Current Role</p>
+              <p className="text-2xl font-bold text-slate-100">{userStats.active}</p>
             </div>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-red-500/20 rounded-lg flex items-center justify-center">
-                  <FiShield className="w-5 h-5 text-red-400" />
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-slate-400">Actions</p>
-                <p className="text-2xl font-bold text-slate-100">{userStats.admins}</p>
-              </div>
+            <div>
+              <p className="text-sm font-medium text-slate-400">Actions</p>
+              <p className="text-2xl font-bold text-slate-100">{userStats.admins}</p>
             </div>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-violet-500/20 rounded-lg flex items-center justify-center">
-                  <FiEdit3 className="w-5 h-5 text-violet-400" />
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-slate-400">Editors</p>
-                <p className="text-2xl font-bold text-slate-100">{userStats.editors}</p>
-              </div>
+            <div>
+              <p className="text-sm font-medium text-slate-400">Editors</p>
+              <p className="text-2xl font-bold text-slate-100">{userStats.editors}</p>
             </div>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
-                  <FiEye className="w-5 h-5 text-green-400" />
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-slate-400">Viewers</p>
-                <p className="text-2xl font-bold text-slate-100">{userStats.viewers}</p>
-              </div>
+            <div>
+              <p className="text-sm font-medium text-slate-400">Viewers</p>
+              <p className="text-2xl font-bold text-slate-100">{userStats.viewers}</p>
             </div>
           </div>
         </div>

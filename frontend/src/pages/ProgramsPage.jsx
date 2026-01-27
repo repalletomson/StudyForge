@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from 'react-query';
-import { FiPlus, FiSearch, FiEye, FiEdit3, FiUsers, FiBookOpen, FiClock, FiPlay } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiEye, FiEdit3, FiBookOpen, FiClock, FiPlay } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import * as programApi from '../services/programApi';
 import * as topicApi from '../services/topicApi';
@@ -117,70 +117,42 @@ const ProgramsPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="card">
           <div className="card-body">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-violet-500/20 rounded-lg flex items-center justify-center">
-                  <FiBookOpen className="w-5 h-5 text-violet-400" />
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-slate-400">All Statuses</p>
-                <p className="text-2xl font-bold text-slate-100">{data?.programs?.length || 0}</p>
-              </div>
+            <div>
+              <p className="text-sm font-medium text-slate-400">All Statuses</p>
+              <p className="text-2xl font-bold text-slate-100">{data?.programs?.length || 0}</p>
             </div>
           </div>
         </div>
 
         <div className="card">
           <div className="card-body">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                  <span className="text-emerald-400 font-bold text-sm">✓</span>
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-slate-400">Published</p>
-                <p className="text-2xl font-bold text-slate-100">
-                  {data?.programs?.filter(p => p.status === 'published').length || 0}
-                </p>
-              </div>
+            <div>
+              <p className="text-sm font-medium text-slate-400">Published</p>
+              <p className="text-2xl font-bold text-slate-100">
+                {data?.programs?.filter(p => p.status === 'published').length || 0}
+              </p>
             </div>
           </div>
         </div>
 
         <div className="card">
           <div className="card-body">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center">
-                  <FiEdit3 className="w-5 h-5 text-amber-400" />
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-slate-400">Draft</p>
-                <p className="text-2xl font-bold text-slate-100">
-                  {data?.programs?.filter(p => p.status === 'draft').length || 0}
-                </p>
-              </div>
+            <div>
+              <p className="text-sm font-medium text-slate-400">Draft</p>
+              <p className="text-2xl font-bold text-slate-100">
+                {data?.programs?.filter(p => p.status === 'draft').length || 0}
+              </p>
             </div>
           </div>
         </div>
 
         <div className="card">
           <div className="card-body">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-violet-500/20 rounded-lg flex items-center justify-center">
-                  <FiUsers className="w-5 h-5 text-violet-400" />
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-slate-400">Unique Topics</p>
-                <p className="text-2xl font-bold text-slate-100">
-                  {new Set(data?.programs?.flatMap(p => p.topicIds?.map(t => t.name) || []) || []).size}
-                </p>
-              </div>
+            <div>
+              <p className="text-sm font-medium text-slate-400">Unique Topics</p>
+              <p className="text-2xl font-bold text-slate-100">
+                {new Set(data?.programs?.flatMap(p => p.topicIds?.map(t => t.name) || []) || []).size}
+              </p>
             </div>
           </div>
         </div>
