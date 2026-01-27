@@ -438,9 +438,6 @@ const EditProgramPage = () => {
                     <strong>Required:</strong> Portrait and landscape posters are mandatory.
                   </p>
                 </div>
-                    <strong>Note:</strong> Portrait and landscape posters are required for publishing. All images should be high-quality and represent your program content.
-                  </p>
-                </div>
               </div>
             </div>
 

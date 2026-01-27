@@ -1,7 +1,8 @@
 /**
  * Main App component with routing
  */
-import { Routes, Route, Navigate, Suspense, lazy } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { Suspense, lazy } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 
