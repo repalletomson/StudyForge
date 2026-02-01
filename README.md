@@ -18,14 +18,14 @@ A modern, full-stack educational content management system built with React, Nod
          │                       │                       │
          │                       │                       │
          ▼                       ▼                       ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+┌──────────────        ┌─────────────────┐    ┌─────────────────┐
 │                 │    │                 │    │                 │
-│   nginx         │    │  MongoDB Atlas  │    │   File Storage  │
-│   (Proxy)       │    │  (Database)     │    │   (Local/Cloud) │
+│                 │    │  MongoDB Atlas  │    │   File Storage  │
+│                 │    │  (Database)     │    │   (Local/Cloud) │
 │                 │    │                 │    │                 │
-│ • SSL/TLS       │    │ • Users         │    │ • Images        │
-│ • Load Balance  │    │ • Programs      │    │ • Videos        │
-│ • Static Files  │    │ • Lessons       │    │ • Documents     │
+│                 │    │ • Users         │    │ • Images        │
+│                 │    │ • Programs      │    │ • Videos        │
+│                 │    │ • Lessons       │    │ • Documents     │
 │                 │    │ • Assets        │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
