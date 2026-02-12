@@ -1,20 +1,13 @@
-/**
- * Asset Manager Modal Component
- */
 import { useState, useEffect } from 'react';
-import { useQueryClient } from 'react-query';
 import { FiX } from 'react-icons/fi';
 import AssetUploader from '../ui/AssetUploader';
 import toast from 'react-hot-toast';
-
 const AssetManagerModal = ({ isOpen, onClose, entity, entityType, onAssetUpdate }) => {
   const [selectedLanguage, setSelectedLanguage] = useState(entity?.languagePrimary || 'en');
   const [refreshKey, setRefreshKey] = useState(0);
   const variants = ['portrait', 'landscape', 'square', 'banner'];
   const assetType = entityType === 'program' ? 'posters' : 'thumbnails';
   const availableLanguages = entity?.languagesAvailable || ['en'];
-  
-  const queryClient = useQueryClient();
 
   // Debug: Log entity data when modal opens
   useEffect(() => {
@@ -28,20 +21,12 @@ const AssetManagerModal = ({ isOpen, onClose, entity, entityType, onAssetUpdate 
       });
     }
   }, [isOpen, entity, selectedLanguage]);
-
   const handleAssetUpload = async (language, variant, result) => {
     console.log('Asset uploaded:', { language, variant, result });
-    
     // Show immediate success feedback
     toast.success(`${variant} ${assetType} uploaded for ${language.toUpperCase()}`);
-    
     // Force refresh of the entity data
     setRefreshKey(prev => prev + 1);
-    
-    // Invalidate React Query cache to trigger refetch
-    queryClient.invalidateQueries(['program', entity?._id]);
-    queryClient.invalidateQueries('programs');
-    
     // Wait a moment then call parent callback
     setTimeout(() => {
       if (onAssetUpdate) {
@@ -49,9 +34,7 @@ const AssetManagerModal = ({ isOpen, onClose, entity, entityType, onAssetUpdate 
       }
     }, 500);
   };
-
   if (!isOpen || !entity) return null;
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -76,7 +59,6 @@ const AssetManagerModal = ({ isOpen, onClose, entity, entityType, onAssetUpdate 
               <FiX className="w-6 h-6" />
             </button>
           </div>
-
           <div className="mb-6">
             <label className="form-label">Select Language</label>
             <div className="flex flex-wrap gap-2">
@@ -98,21 +80,18 @@ const AssetManagerModal = ({ isOpen, onClose, entity, entityType, onAssetUpdate 
               ))}
             </div>
           </div>
-
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {variants.map(variant => {
               // Get the current asset URL from the entity's assets
               const currentAsset = entity?.assets?.posters?.[selectedLanguage]?.[variant] || 
                                  entity?.assets?.thumbnails?.[selectedLanguage]?.[variant];
               const isRequired = variant === 'portrait' || variant === 'landscape';
-              
               console.log(`Asset check for ${variant}:`, {
                 selectedLanguage,
                 currentAsset,
                 fullPath: `entity.assets.posters.${selectedLanguage}.${variant}`,
                 assets: entity?.assets
               });
-              
               return (
                 <div key={`${variant}-${selectedLanguage}-${refreshKey}`} className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -123,7 +102,6 @@ const AssetManagerModal = ({ isOpen, onClose, entity, entityType, onAssetUpdate 
                       <span className="text-xs text-red-600 font-medium">Required</span>
                     )}
                   </div>
-                  
                   <AssetUploader
                     entityId={entity._id}
                     entityType={entityType}
@@ -134,7 +112,6 @@ const AssetManagerModal = ({ isOpen, onClose, entity, entityType, onAssetUpdate 
                     onUploadSuccess={(result) => handleAssetUpload(selectedLanguage, variant, result)}
                     className="h-40"
                   />
-                  
                   <p className="text-xs text-gray-500 text-center">
                     {variant === 'portrait' && '3:4 ratio recommended'}
                     {variant === 'landscape' && '16:9 ratio recommended'}
@@ -145,7 +122,6 @@ const AssetManagerModal = ({ isOpen, onClose, entity, entityType, onAssetUpdate 
               );
             })}
           </div>
-
           <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <h4 className="text-sm font-semibold text-blue-900 mb-2">Asset Requirements</h4>
             <ul className="text-xs text-blue-800 space-y-1">
@@ -156,13 +132,11 @@ const AssetManagerModal = ({ isOpen, onClose, entity, entityType, onAssetUpdate 
               <li>• Assets are required before publishing content</li>
             </ul>
           </div>
-
           <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200 mt-6">
             <button
               onClick={() => {
                 console.log('Manual refresh triggered');
                 setRefreshKey(prev => prev + 1);
-                queryClient.invalidateQueries(['program', entity?._id]);
                 if (onAssetUpdate) {
                   onAssetUpdate();
                 }
@@ -183,5 +157,4 @@ const AssetManagerModal = ({ isOpen, onClose, entity, entityType, onAssetUpdate 
     </div>
   );
 };
-
 export default AssetManagerModal;

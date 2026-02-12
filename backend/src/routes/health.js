@@ -1,27 +1,20 @@
-/**
- * Health check routes
- */
+
 const express = require('express');
 const { checkDatabaseHealth } = require('../config/database');
 const logger = require('../config/logger');
 
 const router = express.Router();
 
-/**
- * GET /health
- * Health check endpoint
- */
+
 router.get('/', async (req, res) => {
   try {
     const startTime = Date.now();
     
-    // Check database connectivity (required)
+    
     const dbHealthy = await checkDatabaseHealth();
     
     const responseTime = Date.now() - startTime;
-    
-    // System is healthy if database is working
-    const isHealthy = dbHealthy;
+        const isHealthy = dbHealthy;
     
     const healthStatus = {
       status: isHealthy ? 'OK' : 'ERROR',

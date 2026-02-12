@@ -1,77 +1,63 @@
-/**
- * Publish Modal Component - Handles publishing and scheduling
- */
 import { useState, useEffect } from 'react';
-import { useMutation, useQueryClient } from 'react-query';
 import { FiX, FiCalendar, FiClock, FiGlobe, FiCheck, FiAlertTriangle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import * as programApi from '../../services/programApi';
 import * as lessonApi from '../../services/lessonApi';
-
 const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
   const [publishType, setPublishType] = useState('now'); // 'now' or 'scheduled'
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
   const [selectedLanguages, setSelectedLanguages] = useState([]);
   const [errors, setErrors] = useState({});
-
-  const queryClient = useQueryClient();
-
+  const [publishing, setPublishing] = useState(false);
   // Set default selected languages to primary language
   useEffect(() => {
     if (entity && selectedLanguages.length === 0) {
       setSelectedLanguages([entity.languagePrimary || 'en']);
     }
   }, [entity, selectedLanguages.length]);
-
-  const publishMutation = useMutation(
-    async (publishData) => {
+  const handlePublish = async (publishData) => {
+    try {
+      setPublishing(true);
+      
       if (publishData.publishType === 'now') {
         if (entityType === 'program') {
-          return await programApi.publishProgram(entity._id, { languages: publishData.languages });
+          await programApi.publishProgram(entity._id, { languages: publishData.languages });
         } else {
-          return await lessonApi.publishLesson(entity._id, { languages: publishData.languages });
+          await lessonApi.publishLesson(entity._id, { languages: publishData.languages });
         }
       } else {
         if (entityType === 'program') {
-          return await programApi.scheduleProgram(entity._id, {
+          await programApi.scheduleProgram(entity._id, {
             scheduledPublishAt: publishData.scheduledDateTime,
             languages: publishData.languages
           });
         } else {
-          return await lessonApi.scheduleLesson(entity._id, {
+          await lessonApi.scheduleLesson(entity._id, {
             scheduledPublishAt: publishData.scheduledDateTime,
             languages: publishData.languages
           });
         }
       }
-    },
-    {
-      onSuccess: (updatedEntity) => {
-        queryClient.invalidateQueries(['programs']);
-        queryClient.invalidateQueries(['lessons']);
-        
-        if (publishType === 'now') {
-          toast.success(`${entityType} published successfully!`);
-        } else {
-          toast.success(`${entityType} scheduled for publishing!`);
-        }
-        
-        handleClose();
-      },
-      onError: (error) => {
-        toast.error(error.message || 'Failed to publish');
+      
+      if (publishType === 'now') {
+        toast.success(`${entityType} published successfully!`);
+      } else {
+        toast.success(`${entityType} scheduled for publishing!`);
       }
+      handleClose();
+    } catch (error) {
+      console.error('Error publishing:', error);
+      toast.error(error.message || 'Failed to publish');
+    } finally {
+      setPublishing(false);
     }
-  );
-
+  };
   const validateForm = () => {
     const newErrors = {};
-
     if (selectedLanguages.length === 0) {
       newErrors.languages = 'Select at least one language to publish';
     }
-
     if (publishType === 'scheduled') {
       if (!scheduledDate) {
         newErrors.scheduledDate = 'Scheduled date is required';
@@ -79,7 +65,6 @@ const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
       if (!scheduledTime) {
         newErrors.scheduledTime = 'Scheduled time is required';
       }
-      
       if (scheduledDate && scheduledTime) {
         const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
         if (scheduledDateTime <= new Date()) {
@@ -87,27 +72,21 @@ const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
         }
       }
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    
     if (!validateForm()) {
       return;
     }
-
     const publishData = {
       publishType,
       languages: selectedLanguages,
       scheduledDateTime: publishType === 'scheduled' ? `${scheduledDate}T${scheduledTime}` : null
     };
-
-    publishMutation.mutate(publishData);
+    handlePublish(publishData);
   };
-
   const handleClose = () => {
     setPublishType('now');
     setScheduledDate('');
@@ -116,7 +95,6 @@ const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
     setErrors({});
     onClose();
   };
-
   const handleLanguageToggle = (language) => {
     setSelectedLanguages(prev => 
       prev.includes(language)
@@ -124,12 +102,10 @@ const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
         : [...prev, language]
     );
   };
-
   // Check if entity has required assets for publishing
   const checkAssetRequirements = () => {
     const missingAssets = [];
     const requiredVariants = ['portrait', 'landscape'];
-    
     selectedLanguages.forEach(language => {
       requiredVariants.forEach(variant => {
         const hasAsset = entity?.assets?.[entityType === 'program' ? 'posters' : 'thumbnails']?.[language]?.[variant];
@@ -138,16 +114,12 @@ const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
         }
       });
     });
-    
     return missingAssets;
   };
-
   if (!isOpen || !entity) return null;
-
   const availableLanguages = entity.languagesAvailable || ['en'];
   const missingAssets = checkAssetRequirements();
   const canPublish = missingAssets.length === 0 && selectedLanguages.length > 0;
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -155,7 +127,6 @@ const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
           className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 backdrop-blur-sm"
           onClick={handleClose}
         />
-        
         <div className="inline-block w-full max-w-lg p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-2xl rounded-2xl animate-slide-up">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
@@ -178,9 +149,8 @@ const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
               <FiX className="w-5 h-5" />
             </button>
           </div>
-
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Publishing Type */}
+            {}
             <div>
               <label className="form-label">Publishing Options</label>
               <div className="space-y-3">
@@ -201,7 +171,6 @@ const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
                     <p className="text-xs text-gray-500">Make content available immediately</p>
                   </div>
                 </label>
-                
                 <label className="flex items-center">
                   <input
                     type="radio"
@@ -221,8 +190,7 @@ const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
                 </label>
               </div>
             </div>
-
-            {/* Scheduled Publishing Options */}
+            {}
             {publishType === 'scheduled' && (
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -236,13 +204,12 @@ const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
                     onChange={(e) => setScheduledDate(e.target.value)}
                     min={new Date().toISOString().split('T')[0]}
                     className={`form-input ${errors.scheduledDate ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-                    disabled={publishMutation.isLoading}
+                    disabled={publishing}
                   />
                   {errors.scheduledDate && (
                     <p className="mt-1 text-sm text-red-600">{errors.scheduledDate}</p>
                   )}
                 </div>
-                
                 <div>
                   <label className="form-label">
                     <FiClock className="inline w-4 h-4 mr-2" />
@@ -253,13 +220,12 @@ const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
                     value={scheduledTime}
                     onChange={(e) => setScheduledTime(e.target.value)}
                     className={`form-input ${errors.scheduledTime ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-                    disabled={publishMutation.isLoading}
+                    disabled={publishing}
                   />
                   {errors.scheduledTime && (
                     <p className="mt-1 text-sm text-red-600">{errors.scheduledTime}</p>
                   )}
                 </div>
-                
                 {errors.scheduledDateTime && (
                   <div className="col-span-2">
                     <p className="text-sm text-red-600">{errors.scheduledDateTime}</p>
@@ -267,8 +233,7 @@ const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
                 )}
               </div>
             )}
-
-            {/* Language Selection */}
+            {}
             <div>
               <label className="form-label">Languages to Publish</label>
               <div className="space-y-2">
@@ -279,7 +244,7 @@ const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
                       checked={selectedLanguages.includes(language)}
                       onChange={() => handleLanguageToggle(language)}
                       className="form-checkbox"
-                      disabled={publishMutation.isLoading}
+                      disabled={publishing}
                     />
                     <span className="ml-3 text-sm text-gray-900">
                       {language.toUpperCase()}
@@ -294,8 +259,7 @@ const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
                 <p className="mt-1 text-sm text-red-600">{errors.languages}</p>
               )}
             </div>
-
-            {/* Asset Requirements Check */}
+            {}
             {selectedLanguages.length > 0 && (
               <div className={`p-4 rounded-lg border ${
                 missingAssets.length > 0 ? 'border-yellow-200 bg-yellow-50' : 'border-green-200 bg-green-50'
@@ -335,22 +299,21 @@ const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
                 </div>
               </div>
             )}
-
             <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
               <button
                 type="button"
                 onClick={handleClose}
                 className="btn-secondary"
-                disabled={publishMutation.isLoading}
+                disabled={publishing}
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 className="btn-primary"
-                disabled={publishMutation.isLoading || !canPublish}
+                disabled={publishing || !canPublish}
               >
-                {publishMutation.isLoading ? (
+                {publishing ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     {publishType === 'now' ? 'Publishing...' : 'Scheduling...'}
@@ -366,5 +329,4 @@ const PublishModal = ({ isOpen, onClose, entity, entityType }) => {
     </div>
   );
 };
-
 export default PublishModal;

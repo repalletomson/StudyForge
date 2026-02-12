@@ -1,6 +1,3 @@
-/**
- * Catalog controller for public API
- */
 const Program = require('../models/Program');
 const Term = require('../models/Term');
 const Lesson = require('../models/Lesson');
@@ -9,9 +6,6 @@ const ProgramAsset = require('../models/ProgramAsset');
 const LessonAsset = require('../models/LessonAsset');
 const logger = require('../config/logger');
 
-/**
- * Create application error
- */
 const createError = (message, statusCode = 500, code = 'APPLICATION_ERROR') => {
   const error = new Error(message);
   error.statusCode = statusCode;
@@ -19,9 +13,6 @@ const createError = (message, statusCode = 500, code = 'APPLICATION_ERROR') => {
   return error;
 };
 
-/**
- * Set cache headers
- */
 const setCacheHeaders = (res, maxAge = 300) => {
   res.set({
     'Cache-Control': `public, max-age=${maxAge}`,
@@ -30,11 +21,6 @@ const setCacheHeaders = (res, maxAge = 300) => {
   });
 };
 
-/**
- * GET /catalog/programs
- * Get published programs with filtering and pagination
- * Only programs with ≥1 published lessons, sorted by most recently published
- */
 const getPrograms = async (req, res, next) => {
   try {
     const {
@@ -204,11 +190,6 @@ const getPrograms = async (req, res, next) => {
   }
 };
 
-/**
- * GET /catalog/programs/:id
- * Get published program with terms and published lessons only
- * Includes multi-language fields and assets
- */
 const getProgram = async (req, res, next) => {
   try {
     const programId = req.params.id;
@@ -282,13 +263,13 @@ const getProgram = async (req, res, next) => {
       })
     );
 
-    // Filter out terms with no published lessons
+    
     const termsWithPublishedLessons = termsWithLessons.filter(term => term.lessons.length > 0);
 
-    // Get program assets
+  
     const assets = await ProgramAsset.find({ programId: program._id });
 
-    // Format program assets according to specification
+    
     const formattedAssets = {
       posters: {}
     };
@@ -318,7 +299,7 @@ const getProgram = async (req, res, next) => {
     res.json(response);
 
   } catch (error) {
-    // Consistent error format
+   
     if (error.statusCode) {
       return res.status(error.statusCode).json({
         code: error.code || 'APPLICATION_ERROR',
@@ -330,22 +311,17 @@ const getProgram = async (req, res, next) => {
   }
 };
 
-/**
- * GET /catalog/lessons/:id
- * Get published lesson details only
- */
 const getLesson = async (req, res, next) => {
   try {
     const lessonId = req.params.id;
     
-    // Validate ObjectId
+
     if (!lessonId.match(/^[0-9a-fA-F]{24}$/)) {
       throw createError('Invalid lesson ID', 400, 'VALIDATION_ERROR');
     }
 
     const lesson = await Lesson.findById(lessonId);
 
-    // Only return published lessons
     if (!lesson || lesson.status !== 'published') {
       return res.status(404).json({
         code: 'RESOURCE_NOT_FOUND',
@@ -402,10 +378,6 @@ const getLesson = async (req, res, next) => {
   }
 };
 
-/**
- * GET /catalog/topics
- * Get available topics with program counts
- */
 const getTopics = async (req, res, next) => {
   try {
     // Get topics with program counts
@@ -474,9 +446,6 @@ const getTopics = async (req, res, next) => {
   }
 };
 
-/**
- * DEBUG: Get all programs (simple query for debugging)
- */
 const debugPrograms = async (req, res, next) => {
   try {
     // Simple query to see what's in the database

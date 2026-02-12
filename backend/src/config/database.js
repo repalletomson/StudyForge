@@ -1,31 +1,34 @@
 
-/**
- * Database configuration and connection setup
- */
 const mongoose = require("mongoose");
 const logger = require("./logger");
 
-/**
- * Connect to MongoDB database
- * @returns {Promise<void>}
- */
 const connectDatabase = async () => {
   try {
     const mongoUri =
       process.env.MONGODB_URI || "mongodb://localhost:27017/cms_db";
 
     await mongoose.connect(mongoUri, {
-      maxPoolSize: 10,
+      maxPoolSize: 20,
+      minPoolSize: 5,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
+      maxIdleTimeMS: 30000,
+      retryWrites: true,
+      readPreference: 'primaryPreferred',
+      writeConcern: {
+        w: 'majority',
+        j: true,
+        wtimeout: 5000
+      },
+      readConcern: {
+        level: 'local'
+      }
     });
 
     logger.info("MongoDB connected successfully", {
       host: mongoose.connection.host,
       database: mongoose.connection.name,
     });
-
-    // Handle connection events
     mongoose.connection.on("error", (err) => {
       logger.error("MongoDB connection error:", err);
     });
@@ -43,10 +46,6 @@ const connectDatabase = async () => {
   }
 };
 
-/**
- * Disconnect from MongoDB
- * @returns {Promise<void>}
- */
 const disconnectDatabase = async () => {
   try {
     await mongoose.disconnect();
@@ -56,14 +55,10 @@ const disconnectDatabase = async () => {
   }
 };
 
-/**
- * Check database connection health
- * @returns {Promise<boolean>}
- */
 const checkDatabaseHealth = async () => {
   try {
     const state = mongoose.connection.readyState;
-    return state === 1; // 1 = connected
+    return state === 1;
   } catch (error) {
     logger.error("Database health check failed:", error);
     return false;

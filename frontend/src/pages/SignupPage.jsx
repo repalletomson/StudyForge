@@ -1,6 +1,3 @@
-/**
- * Enhanced Signup Page Component
- */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -9,27 +6,21 @@ import { useAuth } from '../contexts/AuthContext';
 import { signup } from '../services/authApi';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
-
 const SignupPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
   const { login } = useAuth();
   const navigate = useNavigate();
-  
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors }
   } = useForm();
-
   const password = watch('password');
-
   const onSubmit = async (data) => {
     setIsLoading(true);
-
     try {
       // Use the signup function from authApi instead of direct fetch
       const result = await signup({
@@ -38,23 +29,20 @@ const SignupPage = () => {
         email: data.email,
         password: data.password
       });
-
       // Auto-login after successful signup
       await login({ email: data.email, password: data.password });
       toast.success('Account created successfully!');
       navigate('/dashboard/programs');
-
     } catch (error) {
       toast.error(error.message || 'Signup failed');
     } finally {
       setIsLoading(false);
     }
   };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-purple-950 to-violet-950 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 animate-fade-in">
-        {/* Header */}
+        {}
         <div className="text-center">
           <h2 className="text-3xl font-bold text-white font-heading">
             StudyForge
@@ -63,8 +51,7 @@ const SignupPage = () => {
             Create your account
           </p>
         </div>
-
-        {/* Signup Form */}
+        {}
         <div className="card">
           <div className="card-body">
             <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
@@ -82,7 +69,7 @@ const SignupPage = () => {
                       type="text"
                       autoComplete="given-name"
                       className={`form-input pl-10 ${errors.firstName ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
-                      placeholder="John"
+                      placeholder="Tomson"
                       {...register('firstName', {
                         required: 'First name is required',
                         minLength: {
@@ -96,7 +83,6 @@ const SignupPage = () => {
                     <p className="form-error">{errors.firstName.message}</p>
                   )}
                 </div>
-
                 <div>
                   <label htmlFor="lastName" className="form-label">
                     Last Name
@@ -106,7 +92,7 @@ const SignupPage = () => {
                     type="text"
                     autoComplete="family-name"
                     className={`form-input ${errors.lastName ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
-                    placeholder="Doe"
+                    placeholder=""
                     {...register('lastName', {
                       minLength: {
                         value: 2,
@@ -119,7 +105,6 @@ const SignupPage = () => {
                   )}
                 </div>
               </div>
-
               <div>
                 <label htmlFor="email" className="form-label">
                   Email Address
@@ -133,7 +118,7 @@ const SignupPage = () => {
                     type="email"
                     autoComplete="email"
                     className={`form-input pl-10 ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
-                    placeholder="john@example.com"
+                    placeholder="tomson@email.com"
                     {...register('email', {
                       required: 'Email is required',
                       pattern: {
@@ -147,7 +132,6 @@ const SignupPage = () => {
                   <p className="form-error">{errors.email.message}</p>
                 )}
               </div>
-
               <div>
                 <label htmlFor="password" className="form-label">
                   Password
@@ -186,7 +170,6 @@ const SignupPage = () => {
                   <p className="form-error">{errors.password.message}</p>
                 )}
               </div>
-
               <div>
                 <label htmlFor="confirmPassword" className="form-label">
                   Confirm Password
@@ -223,7 +206,6 @@ const SignupPage = () => {
                   <p className="form-error">{errors.confirmPassword.message}</p>
                 )}
               </div>
-
               <div>
                 <button
                   type="submit"
@@ -243,7 +225,6 @@ const SignupPage = () => {
                   )}
                 </button>
               </div>
-
               <div className="text-center">
                 <p className="text-sm text-slate-400">
                   Already have an account?{' '}
@@ -258,8 +239,7 @@ const SignupPage = () => {
             </form>
           </div>
         </div>
-
-        {/* Terms */}
+        {}
         <div className="text-center">
           <p className="text-xs text-slate-500">
             By creating an account, you agree to our{' '}
@@ -272,5 +252,4 @@ const SignupPage = () => {
     </div>
   );
 };
-
 export default SignupPage;

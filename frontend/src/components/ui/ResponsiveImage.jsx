@@ -1,11 +1,5 @@
-/**
- * Responsive Image Component
- * Shows different image variants based on screen size
- * Rejects placeholder images and only shows user-uploaded content
- */
 import { useState, useEffect } from 'react';
 import { getBestImageUrl, validateImageUrl } from '../../utils/imageUtils';
-
 const ResponsiveImage = ({ 
   assets, 
   alt, 
@@ -16,42 +10,33 @@ const ResponsiveImage = ({
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
-
   // Detect screen size changes
   useEffect(() => {
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth < 768);
     };
-
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
-
   // Get the appropriate image URL based on screen size and available assets
   const getResponsiveImageUrl = () => {
     if (!assets) return null;
-    
     // Use utility function to get best image, prioritizing based on screen size
     const preferredVariant = isMobile ? 'portrait' : 'landscape';
     const imageUrl = getBestImageUrl(assets, 'en', preferredVariant);
-    
     // Double-check that the URL is valid and not a placeholder
     return validateImageUrl(imageUrl);
   };
-
   const imageUrl = getResponsiveImageUrl();
-
   const handleImageLoad = () => {
     setIsLoading(false);
     setImageError(false);
   };
-
   const handleImageError = () => {
     setIsLoading(false);
     setImageError(true);
   };
-
   // If no image URL or error, show fallback
   if (!imageUrl || imageError) {
     return (
@@ -67,10 +52,9 @@ const ResponsiveImage = ({
       </div>
     );
   }
-
   return (
     <div className={`relative ${className}`}>
-      {/* Loading placeholder */}
+      {}
       {isLoading && (
         <div className="absolute inset-0 bg-gray-800 flex items-center justify-center z-10">
           <div className="text-center text-gray-400">
@@ -82,8 +66,7 @@ const ResponsiveImage = ({
           </div>
         </div>
       )}
-
-      {/* Main image */}
+      {}
       <img
         src={imageUrl}
         alt={alt}
@@ -91,8 +74,7 @@ const ResponsiveImage = ({
         onLoad={handleImageLoad}
         onError={handleImageError}
       />
-
-      {/* Debug info (only in development) */}
+      {}
       {process.env.NODE_ENV === 'development' && !isLoading && !imageError && (
         <div className="absolute top-1 left-1 bg-black bg-opacity-50 text-white text-xs px-1 py-0.5 rounded">
           {isMobile ? 'M' : 'D'}
@@ -101,5 +83,4 @@ const ResponsiveImage = ({
     </div>
   );
 };
-
 export default ResponsiveImage;

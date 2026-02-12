@@ -1,12 +1,8 @@
-/**
- * Database seed script - Creates comprehensive sample data as required by assignment
- */
 require("dotenv").config();
 
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
-// Import models
 const User = require("../models/User");
 const Topic = require("../models/Topic");
 const Program = require("../models/Program");
@@ -17,9 +13,6 @@ const LessonAsset = require("../models/LessonAsset");
 
 const logger = require("../config/logger");
 
-/**
- * Connect to database
- */
 const connectDatabase = async () => {
   try {
     const mongoUri =
@@ -35,9 +28,6 @@ const connectDatabase = async () => {
   }
 };
 
-/**
- * Clear existing data
- */
 const clearData = async () => {
   try {
     await User.deleteMany({});
@@ -54,9 +44,6 @@ const clearData = async () => {
   }
 };
 
-/**
- * Create users for all roles
- */
 const createUsers = async () => {
   try {
     const users = [
@@ -104,9 +91,6 @@ const createUsers = async () => {
   }
 };
 
-/**
- * Create topics
- */
 const createTopics = async () => {
   try {
     const topics = [
@@ -181,9 +165,6 @@ const createTopics = async () => {
   }
 };
 
-/**
- * Create programs with multi-language support
- */
 const createPrograms = async (topics) => {
   try {
     const programs = [
@@ -234,9 +215,6 @@ const createPrograms = async (topics) => {
   }
 };
 
-/**
- * Main seed function
- */
 const seedDatabase = async () => {
   try {
     logger.info("Starting comprehensive database seeding...");
@@ -267,7 +245,6 @@ const seedDatabase = async () => {
   }
 };
 
-// Run the seed script
 if (require.main === module) {
   seedDatabase();
 }

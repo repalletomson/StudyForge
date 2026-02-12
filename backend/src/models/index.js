@@ -1,9 +1,5 @@
-/**
- * Models index file - loads all models and ensures proper indexing
- */
 const mongoose = require('mongoose');
 
-// Import all models
 const Program = require('./Program');
 const Topic = require('./Topic');
 const Term = require('./Term');
@@ -12,16 +8,10 @@ const ProgramAsset = require('./ProgramAsset');
 const LessonAsset = require('./LessonAsset');
 const User = require('./User');
 
-// Import constants
 const constants = require('./constants');
 
-/**
- * Initialize database indexes
- * This function ensures all indexes are created properly
- */
 const initializeIndexes = async () => {
   try {
-    // Create indexes for all models
     await Program.createIndexes();
     await Topic.createIndexes();
     await Term.createIndexes();
@@ -37,13 +27,8 @@ const initializeIndexes = async () => {
   }
 };
 
-/**
- * Validate database constraints
- * This function performs validation checks on the database schema
- */
 const validateConstraints = async () => {
   try {
-    // Test unique constraints
     const collections = await mongoose.connection.db.listCollections().toArray();
     const collectionNames = collections.map(c => c.name);
     
@@ -66,7 +51,6 @@ const validateConstraints = async () => {
 };
 
 module.exports = {
-  // Models
   Program,
   Topic,
   Term,
@@ -75,10 +59,8 @@ module.exports = {
   LessonAsset,
   User,
   
-  // Constants
   constants,
   
-  // Utilities
   initializeIndexes,
   validateConstraints
 };

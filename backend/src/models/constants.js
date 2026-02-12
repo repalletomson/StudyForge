@@ -1,53 +1,40 @@
-/**
- * Shared constants and enums for all models
- */
-
-// Program status enum
 const PROGRAM_STATUS = {
-  DRAFT: "draft",
-  SCHEDULED: "scheduled",
-  PUBLISHED: "published",
-  ARCHIVED: "archived",
+  DRAFT: 'draft',
+  PUBLISHED: 'published',
+  ARCHIVED: 'archived'
 };
 
-// Lesson status enum
 const LESSON_STATUS = {
-  DRAFT: "draft",
-  SCHEDULED: "scheduled",
-  PUBLISHED: "published",
-  ARCHIVED: "archived",
+  DRAFT: 'draft',
+  SCHEDULED: 'scheduled',
+  PUBLISHED: 'published',
+  ARCHIVED: 'archived'
 };
 
-// Content type enum
 const CONTENT_TYPE = {
-  VIDEO: "video",
-  ARTICLE: "article",
+  VIDEO: 'video',
+  ARTICLE: 'article'
 };
 
-// Asset variant enum
 const ASSET_VARIANT = {
-  PORTRAIT: "portrait",
-  LANDSCAPE: "landscape",
-  SQUARE: "square",
-  BANNER: "banner",
+  PORTRAIT: 'portrait',
+  LANDSCAPE: 'landscape',
+  SQUARE: 'square',
+  BANNER: 'banner'
 };
 
-// Program asset type enum
 const PROGRAM_ASSET_TYPE = {
-  POSTER: "poster",
+  POSTER: 'poster'
 };
 
-// Lesson asset type enum
 const LESSON_ASSET_TYPE = {
-  THUMBNAIL: "thumbnail",
-  POSTER: "poster", // Added for program assets stored in LessonAsset model
+  THUMBNAIL: 'thumbnail'
 };
 
-// User role enum
 const USER_ROLE = {
-  ADMIN: "admin",
-  EDITOR: "editor",
-  VIEWER: "viewer",
+  ADMIN: 'admin',
+  EDITOR: 'editor',
+  VIEWER: 'viewer'
 };
 
 module.exports = {
@@ -57,5 +44,5 @@ module.exports = {
   ASSET_VARIANT,
   PROGRAM_ASSET_TYPE,
   LESSON_ASSET_TYPE,
-  USER_ROLE,
+  USER_ROLE
 };

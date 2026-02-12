@@ -1,12 +1,6 @@
-/**
- * Topic controller for CRUD operations
- */
 const Topic = require('../models/Topic');
 const logger = require('../config/logger');
 
-/**
- * Create application error
- */
 const createError = (message, statusCode = 500, code = 'APPLICATION_ERROR') => {
   const error = new Error(message);
   error.statusCode = statusCode;
@@ -14,10 +8,6 @@ const createError = (message, statusCode = 500, code = 'APPLICATION_ERROR') => {
   return error;
 };
 
-/**
- * GET /api/admin/topics
- * Get all topics
- */
 const getTopics = async (req, res, next) => {
   try {
     const topics = await Topic.find({ isActive: true }).sort({ name: 1 });
@@ -28,10 +18,6 @@ const getTopics = async (req, res, next) => {
   }
 };
 
-/**
- * POST /api/admin/topics
- * Create new topic
- */
 const createTopic = async (req, res, next) => {
   try {
     const { name, description } = req.body;
@@ -61,10 +47,6 @@ const createTopic = async (req, res, next) => {
   }
 };
 
-/**
- * GET /api/admin/topics/:id
- * Get topic by ID
- */
 const getTopic = async (req, res, next) => {
   try {
     const topic = await Topic.findById(req.params.id);
@@ -79,10 +61,6 @@ const getTopic = async (req, res, next) => {
   }
 };
 
-/**
- * PUT /api/admin/topics/:id
- * Update topic
- */
 const updateTopic = async (req, res, next) => {
   try {
     const { name, description, isActive } = req.body;
@@ -112,10 +90,6 @@ const updateTopic = async (req, res, next) => {
   }
 };
 
-/**
- * DELETE /api/admin/topics/:id
- * Delete topic
- */
 const deleteTopic = async (req, res, next) => {
   try {
     const topic = await Topic.findById(req.params.id);

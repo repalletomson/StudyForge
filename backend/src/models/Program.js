@@ -1,8 +1,4 @@
-/**
- * Program model for educational programs
- */
 const mongoose = require('mongoose');
-const { PROGRAM_STATUS } = require('./constants');
 
 const programSchema = new mongoose.Schema({
   title: {
@@ -15,6 +11,13 @@ const programSchema = new mongoose.Schema({
     type: String,
     maxlength: 2000
   },
+  youtubeUrl: String,
+  youtubeVideoId: String,
+  difficulty: {
+    type: String,
+    enum: ['beginner', 'intermediate', 'advanced'],
+    default: 'beginner'
+  },
   languagePrimary: {
     type: String,
     required: true,
@@ -24,118 +27,59 @@ const programSchema = new mongoose.Schema({
     type: [String],
     required: true,
     validate: {
-      validator: function(languages) {
-        return languages.includes(this.languagePrimary);
+      validator: function(langs) {
+        return langs.includes(this.languagePrimary);
       },
-      message: 'Primary language must be included in available languages'
+      message: 'Primary language must be in available languages'
     }
   },
   status: {
     type: String,
-    required: true,
-    enum: Object.values(PROGRAM_STATUS),
-    default: PROGRAM_STATUS.DRAFT
+    enum: ['draft', 'published', 'archived'],
+    default: 'draft'
   },
-  publishedAt: {
-    type: Date
-  },
-  scheduledPublishAt: {
-    type: Date
-  },
-  archivedAt: {
-    type: Date
-  },
-  publishedLanguages: {
-    type: [String],
-    default: []
-  },
+  publishedAt: Date,
   topicIds: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Topic'
   }]
 }, {
   timestamps: true,
-  toJSON: {
-    transform: function(doc, ret) {
-      delete ret.__v;
-      return ret;
-    }
-  }
+  toJSON: { virtuals: true }
 });
 
-// Indexes for performance
-programSchema.index({ status: 1, languagePrimary: 1, publishedAt: -1 });
+programSchema.index({ status: 1, publishedAt: -1 });
 programSchema.index({ topicIds: 1 });
-programSchema.index({ createdAt: -1 });
 programSchema.index({ title: 'text', description: 'text' });
 
-/**
- * Auto-publish program when first lesson is published
- */
 programSchema.methods.autoPublish = async function() {
-  if (this.status === PROGRAM_STATUS.DRAFT) {
-    this.status = PROGRAM_STATUS.PUBLISHED;
+  if (this.status === 'draft') {
+    this.status = 'published';
     this.publishedAt = this.publishedAt || new Date();
-    return this.save();
+    await this.save();
   }
   return this;
 };
 
-/**
- * Get terms count for this program
- * @returns {Promise<number>}
- */
-programSchema.methods.getTermsCount = async function() {
-  const Term = mongoose.model('Term');
-  return Term.countDocuments({ programId: this._id });
-};
-
-/**
- * Get published lessons count for this program
- * @returns {Promise<number>}
- */
-programSchema.methods.getPublishedLessonsCount = async function() {
+programSchema.methods.autoDraft = async function() {
   const Term = mongoose.model('Term');
   const Lesson = mongoose.model('Lesson');
   
-  const terms = await Term.find({ programId: this._id }).select('_id');
-  const termIds = terms.map(term => term._id);
+  const terms = await Term.find({ programId: this._id });
+  const termIds = terms.map(t => t._id);
   
-  return Lesson.countDocuments({ 
-    termId: { $in: termIds }, 
-    status: 'published' 
-  });
-};
-
-/**
- * Validate required assets for primary language
- * @returns {Promise<Object>}
- */
-programSchema.methods.validateAssets = async function() {
-  const ProgramAsset = mongoose.model('ProgramAsset');
-  
-  const requiredVariants = ['portrait', 'landscape'];
-  const assets = await ProgramAsset.find({
-    programId: this._id,
-    language: this.languagePrimary,
-    assetType: 'poster'
+  const publishedCount = await Lesson.countDocuments({
+    termId: { $in: termIds },
+    status: 'published'
   });
   
-  const availableVariants = assets.map(asset => asset.variant);
-  const missingVariants = requiredVariants.filter(variant => 
-    !availableVariants.includes(variant)
-  );
+  if (publishedCount === 0 && this.status === 'published') {
+    this.status = 'draft';
+    await this.save();
+    return true;
+  }
   
-  return {
-    isValid: missingVariants.length === 0,
-    missingVariants,
-    message: missingVariants.length > 0 
-      ? `Missing required poster variants: ${missingVariants.join(', ')}`
-      : 'All required assets are present'
-  };
+  return false;
 };
-
-// Export constants
-programSchema.statics.STATUS = PROGRAM_STATUS;
 
 module.exports = mongoose.model('Program', programSchema);

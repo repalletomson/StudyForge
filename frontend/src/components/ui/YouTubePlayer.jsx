@@ -1,161 +1,1 @@
-/**
- * YouTube Video Player Component
- */
-import { useState, useEffect } from 'react';
-import { FiPlay, FiExternalLink, FiAlertCircle } from 'react-icons/fi';
-
-const YouTubePlayer = ({ 
-  videoId, 
-  title = 'Video', 
-  className = '',
-  autoplay = false,
-  showTitle = true,
-  onReady
-}) => {
-  const [isPlaying, setIsPlaying] = useState(autoplay);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    if (onReady && !isLoading) {
-      onReady();
-    }
-  }, [onReady, isLoading]);
-
-  if (!videoId) {
-    return (
-      <div className={`bg-gray-900 rounded-lg flex items-center justify-center ${className}`}>
-        <div className="text-center text-gray-400">
-          <FiAlertCircle className="w-8 h-8 mx-auto mb-2" />
-          <p className="text-sm">No video available</p>
-        </div>
-      </div>
-    );
-  }
-
-  const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1&origin=${window.location.origin}`;
-  const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
-
-  const handlePlay = () => {
-    setIsLoading(true);
-    setIsPlaying(true);
-    setHasError(false);
-  };
-
-  const handleIframeLoad = () => {
-    setIsLoading(false);
-    if (onReady) {
-      onReady();
-    }
-  };
-
-  const handleIframeError = () => {
-    setIsLoading(false);
-    setHasError(true);
-  };
-
-  if (isPlaying) {
-    return (
-      <div className={`relative bg-black rounded-lg overflow-hidden ${className}`}>
-        {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-900 z-10">
-            <div className="flex items-center space-x-3 text-gray-400">
-              <svg className="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span>Loading video...</span>
-            </div>
-          </div>
-        )}
-        
-        {hasError ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-            <div className="text-center text-gray-400">
-              <FiAlertCircle className="w-8 h-8 mx-auto mb-2" />
-              <p className="text-sm mb-2">Failed to load video</p>
-              <a
-                href={watchUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition-colors"
-              >
-                <FiExternalLink className="w-3 h-3 mr-1" />
-                Watch on YouTube
-              </a>
-            </div>
-          </div>
-        ) : (
-          <iframe
-            src={embedUrl}
-            title={title}
-            className="w-full h-full"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-            onLoad={handleIframeLoad}
-            onError={handleIframeError}
-          />
-        )}
-        
-        {showTitle && !isLoading && !hasError && (
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-            <h3 className="text-white font-medium text-sm truncate">{title}</h3>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className={`relative group cursor-pointer bg-gray-900 rounded-lg overflow-hidden ${className}`} onClick={handlePlay}>
-      <img
-        src={thumbnailUrl}
-        alt={title}
-        className="w-full h-full object-cover"
-        onError={(e) => {
-          // Fallback to medium quality thumbnail
-          e.target.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-          e.target.onerror = () => {
-            // Final fallback to default thumbnail
-            e.target.src = `https://img.youtube.com/vi/${videoId}/default.jpg`;
-          };
-        }}
-      />
-      
-      {/* Play button overlay */}
-      <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-        <div className="w-16 h-16 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center transform group-hover:scale-110 transition-transform shadow-lg">
-          <FiPlay className="w-6 h-6 text-white ml-1" />
-        </div>
-      </div>
-
-      {/* Title overlay */}
-      {showTitle && (
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-          <h3 className="text-white font-medium text-sm truncate">{title}</h3>
-        </div>
-      )}
-
-      {/* External link button */}
-      <a
-        href={watchUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={(e) => e.stopPropagation()}
-        title="Open in YouTube"
-      >
-        <FiExternalLink className="w-4 h-4" />
-      </a>
-
-      {/* Duration badge */}
-      <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/70 text-white text-xs rounded">
-        YouTube
-      </div>
-    </div>
-  );
-};
-
-export default YouTubePlayer;
+import { useState, useEffect } from 'react';import { FiPlay, FiExternalLink, FiAlertCircle } from 'react-icons/fi';const YouTubePlayer = ({   videoId,   title = 'Video',   className = '',  autoplay = false,  showTitle = true,  onReady}) => {  const [isPlaying, setIsPlaying] = useState(autoplay);  const [isLoading, setIsLoading] = useState(false);  const [hasError, setHasError] = useState(false);  useEffect(() => {    if (onReady && !isLoading) {      onReady();    }  }, [onReady, isLoading]);  if (!videoId) {    return (      <div className={`bg-gray-900 rounded-lg flex items-center justify-center ${className}`}>        <div className="text-center text-gray-400">          <FiAlertCircle className="w-8 h-8 mx-auto mb-2" />          <p className="text-sm">No video available</p>        </div>      </div>    );  }  const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1&origin=${window.location.origin}`;  const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;  const handlePlay = () => {    setIsLoading(true);    setIsPlaying(true);    setHasError(false);  };  const handleIframeLoad = () => {    setIsLoading(false);    if (onReady) {      onReady();    }  };  const handleIframeError = () => {    setIsLoading(false);    setHasError(true);  };  if (isPlaying) {    return (      <div className={`relative bg-black rounded-lg overflow-hidden ${className}`}>        {isLoading && (          <div className="absolute inset-0 flex items-center justify-center bg-gray-900 z-10">            <div className="flex items-center space-x-3 text-gray-400">              <svg className="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>              </svg>              <span>Loading video...</span>            </div>          </div>        )}        {hasError ? (          <div className="absolute inset-0 flex items-center justify-center bg-gray-900">            <div className="text-center text-gray-400">              <FiAlertCircle className="w-8 h-8 mx-auto mb-2" />              <p className="text-sm mb-2">Failed to load video</p>              <a                href={watchUrl}                target="_blank"                rel="noopener noreferrer"                className="inline-flex items-center px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition-colors"              >                <FiExternalLink className="w-3 h-3 mr-1" />                Watch on YouTube              </a>            </div>          </div>        ) : (          <iframe            src={embedUrl}            title={title}            className="w-full h-full"            frameBorder="0"            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"            allowFullScreen            onLoad={handleIframeLoad}            onError={handleIframeError}          />        )}        {showTitle && !isLoading && !hasError && (          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">            <h3 className="text-white font-medium text-sm truncate">{title}</h3>          </div>        )}      </div>    );  }  return (    <div className={`relative group cursor-pointer bg-gray-900 rounded-lg overflow-hidden ${className}`} onClick={handlePlay}>      <img        src={thumbnailUrl}        alt={title}        className="w-full h-full object-cover"        onError={(e) => {          // Fallback to medium quality thumbnail          e.target.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;          e.target.onerror = () => {            // Final fallback to default thumbnail            e.target.src = `https://img.youtube.com/vi/${videoId}/default.jpg`;          };        }}      />      {}      <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors flex items-center justify-center">        <div className="w-16 h-16 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center transform group-hover:scale-110 transition-transform shadow-lg">          <FiPlay className="w-6 h-6 text-white ml-1" />        </div>      </div>      {}      {showTitle && (        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">          <h3 className="text-white font-medium text-sm truncate">{title}</h3>        </div>      )}      {}      <a        href={watchUrl}        target="_blank"        rel="noopener noreferrer"        className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"        onClick={(e) => e.stopPropagation()}        title="Open in YouTube"      >        <FiExternalLink className="w-4 h-4" />      </a>      {}      <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/70 text-white text-xs rounded">        YouTube      </div>    </div>  );};export default YouTubePlayer;

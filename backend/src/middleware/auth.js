@@ -1,124 +1,54 @@
-/**
- * Authentication and authorization middleware
- */
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const logger = require('../config/logger');
 
-/**
- * Create application error
- * @param {string} message - Error message
- * @param {number} statusCode - HTTP status code
- * @param {string} code - Error code
- * @returns {Error}
- */
-const createError = (message, statusCode = 500, code = 'APPLICATION_ERROR') => {
-  const error = new Error(message);
-  error.statusCode = statusCode;
-  error.code = code;
-  return error;
-};
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
-/**
- * Authenticate JWT token
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next function
- */
 const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw createError('Access token required', 401, 'AUTHENTICATION_FAILED');
+      return res.status(401).json({ message: 'No token provided' });
     }
     
-    const token = authHeader.substring(7);
-    
-    // Use same fallback JWT_SECRET as in login route
-    const jwtSecret = process.env.JWT_SECRET || 'temporary-jwt-secret-for-development-only';
-    
-    const decoded = jwt.verify(token, jwtSecret);
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
     
     const user = await User.findById(decoded.userId);
+    
     if (!user || !user.isActive) {
-      throw createError('Invalid or inactive user', 401, 'AUTHENTICATION_FAILED');
+      return res.status(401).json({ message: 'Invalid token' });
     }
     
     req.user = user;
     next();
-    
   } catch (error) {
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      next(createError('Invalid or expired token', 401, 'AUTHENTICATION_FAILED'));
-    } else {
-      next(error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Invalid token' });
     }
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired' });
+    }
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * Authorize user roles
- * @param {string[]} allowedRoles - Array of allowed roles
- * @returns {Function}
- */
 const authorize = (allowedRoles) => {
   return (req, res, next) => {
-    try {
-      if (!req.user) {
-        throw createError('Authentication required', 401, 'AUTHENTICATION_FAILED');
-      }
-      
-      if (!allowedRoles.includes(req.user.role)) {
-        logger.warn('Authorization failed', {
-          userId: req.user._id,
-          userRole: req.user.role,
-          requiredRoles: allowedRoles,
-          correlationId: req.correlationId
-        });
-        
-        throw createError('Insufficient permissions', 403, 'AUTHORIZATION_FAILED');
-      }
-      
-      next();
-    } catch (error) {
-      next(error);
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated' });
     }
-  };
-};
-
-/**
- * Check specific permission
- * @param {string} permission - Permission to check
- * @returns {Function}
- */
-const requirePermission = (permission) => {
-  return (req, res, next) => {
-    try {
-      if (!req.user) {
-        throw createError('Authentication required', 401, 'AUTHENTICATION_FAILED');
-      }
-      
-      if (!req.user.hasPermission(permission)) {
-        logger.warn('Permission check failed', {
-          userId: req.user._id,
-          userRole: req.user.role,
-          requiredPermission: permission,
-          correlationId: req.correlationId
-        });
-        
-        throw createError('Insufficient permissions', 403, 'AUTHORIZATION_FAILED');
-      }
-      
-      next();
-    } catch (error) {
-      next(error);
+    
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'Access denied' });
     }
+    
+    next();
   };
 };
 
 module.exports = {
   authenticate,
   authorize,
-  requirePermission
+  JWT_SECRET
 };

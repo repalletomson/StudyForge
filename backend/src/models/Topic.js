@@ -27,7 +27,6 @@ const topicSchema = new mongoose.Schema({
   }
 });
 
-// Index for active topics
 topicSchema.index({ isActive: 1, name: 1 });
 
 topicSchema.methods.getProgramsCount = async function() {

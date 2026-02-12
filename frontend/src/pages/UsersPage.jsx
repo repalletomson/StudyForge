@@ -1,65 +1,165 @@
-/**
- * Users management page component (Admin only)
- */
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { FiPlus, FiEdit3, FiTrash2, FiUser, FiShield, FiEye, FiSearch, FiMail, FiCalendar, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
+import { useState, useEffect } from 'react';
+import { FiTrash2, FiUser, FiShield, FiEye, FiEyeOff } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import * as userApi from '../services/userApi';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import NewUserModal from '../components/modals/NewUserModal';
-import EditUserModal from '../components/modals/EditUserModal';
 import toast from 'react-hot-toast';
 
 const UsersPage = () => {
   const { hasRole } = useAuth();
-  const [isNewUserModalOpen, setIsNewUserModalOpen] = useState(false);
-  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
-  const queryClient = useQueryClient();
-
-  // Fetch users from API
-  const { data: usersData, isLoading, error } = useQuery(
-    'users',
-    userApi.getUsers,
-    {
-      refetchInterval: 30000, // Refetch every 30 seconds for real-time updates
-      refetchOnWindowFocus: true,
-      onError: (error) => {
-        console.error('Failed to fetch users:', error);
-        toast.error('Failed to load users');
-      }
-    }
-  );
-
-  const users = usersData?.users || [];
-
-  // Delete user mutation
-  const deleteUserMutation = useMutation(userApi.deleteUser, {
-    onSuccess: () => {
-      queryClient.invalidateQueries('users');
-      toast.success('User deleted successfully');
-    },
-    onError: (error) => {
-      toast.error(error.response?.data?.message || 'Failed to delete user');
-    }
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [creating, setCreating] = useState(false);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    role: 'viewer'
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
 
-  // Toggle user status mutation
-  const toggleStatusMutation = useMutation(
-    ({ id, isActive }) => userApi.toggleUserStatus(id, isActive),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('users');
-        toast.success('User status updated successfully');
-      },
-      onError: (error) => {
-        toast.error(error.response?.data?.message || 'Failed to update user status');
-      }
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const usersData = await userApi.getUsers();
+      setUsers(usersData.users || []);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      setError(error);
+      toast.error('Failed to load users');
+    } finally {
+      setLoading(false);
     }
-  );
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const deleteUser = async (userId) => {
+    try {
+      setDeleting(true);
+      await userApi.deleteUser(userId);
+      toast.success('User deleted successfully');
+      loadUsers();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete user');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteUser = (user) => {
+    if (window.confirm(`Are you sure you want to delete ${user.email}? This action cannot be undone.`)) {
+      deleteUser(user._id);
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.email) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Email is invalid';
+    }
+    
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    }
+    
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm password';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+    
+    if (!formData.role) {
+      newErrors.role = 'Role is required';
+    }
+    
+    setFormErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const createUser = async (userData) => {
+    try {
+      setCreating(true);
+      
+      // Use real API instead of mock
+      const newUser = await userApi.createUser(userData);
+      
+      toast.success(`User ${userData.email} created successfully`);
+      
+      // Reset form
+      setFormData({
+        email: '',
+        password: '',
+        confirmPassword: '',
+        role: 'viewer'
+      });
+      setFormErrors({});
+      
+      // Reload users to show the new user
+      await loadUsers();
+      
+    } catch (error) {
+      console.error('Error creating user:', error);
+      
+      // Handle specific error messages from backend
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create user';
+      
+      if (errorMessage.includes('already exists') || errorMessage.includes('Email already exists')) {
+        setFormErrors({ email: 'A user with this email already exists' });
+        toast.error('Email already exists');
+      } else if (errorMessage.includes('validation') || errorMessage.includes('required')) {
+        toast.error('Please check all required fields');
+      } else {
+        toast.error(errorMessage);
+      }
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!validateForm()) {
+      return;
+    }
+    
+    createUser({
+      email: formData.email,
+      password: formData.password,
+      role: formData.role
+    });
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear error when user starts typing
+    if (formErrors[name]) {
+      setFormErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
 
   if (!hasRole('admin')) {
     return (
@@ -73,323 +173,186 @@ const UsersPage = () => {
     );
   }
 
-  const handleDeleteUser = (user) => {
-    if (window.confirm(`Are you sure you want to delete ${user.email}? This action cannot be undone.`)) {
-      deleteUserMutation.mutate(user._id);
-    }
-  };
-
-  const handleEditUser = (user) => {
-    setSelectedUser(user);
-    setIsEditUserModalOpen(true);
-  };
-
-  const handleToggleStatus = (user) => {
-    toggleStatusMutation.mutate({
-      id: user._id,
-      isActive: !user.isActive
-    });
-  };
-
-  const handleUserUpdate = () => {
-    // Refresh users list when a user is updated
-    queryClient.invalidateQueries('users');
-  };
-
-  const getRoleIcon = (role) => {
-    switch (role) {
-      case 'admin': return FiShield;
-      case 'editor': return FiEdit3;
-      case 'viewer': return FiEye;
-      default: return FiUser;
-    }
-  };
-
-  const getRoleBadge = (role) => {
-    const badges = {
-      admin: 'badge-danger',
-      editor: 'badge-info',
-      viewer: 'badge-gray'
-    };
-    return badges[role] || 'badge-gray';
-  };
-
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = !roleFilter || user.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
-
-  const userStats = {
-    total: users.length,
-    active: users.filter(u => u.isActive).length,
-    admins: users.filter(u => u.role === 'admin').length,
-    editors: users.filter(u => u.role === 'editor').length,
-    viewers: users.filter(u => u.role === 'viewer').length
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <div className="mx-auto h-24 w-24 text-red-400 mb-4">
-          <FiUser className="h-24 w-24" />
-        </div>
-        <h3 className="text-lg font-semibold text-slate-200 mb-2">Error loading users</h3>
-        <p className="text-red-400">Please try again later.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 className="text-3xl font-bold text-slate-100 font-heading">User Management</h1>
+        <p className="mt-2 text-slate-400">Create new users and manage existing ones.</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Left Side - New User Form */}
         <div>
-          <h1 className="text-3xl font-bold text-slate-100 font-heading">User Management</h1>
-          <p className="mt-2 text-slate-400">
-            Manage system users and their access levels.
-          </p>
-        </div>
-        <div className="mt-4 sm:mt-0">
-          <button 
-            onClick={() => setIsNewUserModalOpen(true)}
-            className="btn-primary btn-lg"
-          >
-            <FiPlus className="h-5 w-5 mr-2" />
-            Add User
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-        <div className="card">
-          <div className="card-body">
-            <div>
-              <p className="text-sm font-medium text-slate-400">User</p>
-              <p className="text-2xl font-bold text-slate-100">{userStats.total}</p>
-            </div>
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-slate-100 font-heading">Create New User</h2>
           </div>
-        </div>
-        <div className="card">
-          <div className="card-body">
-            <div>
-              <p className="text-sm font-medium text-slate-400">Current Role</p>
-              <p className="text-2xl font-bold text-slate-100">{userStats.active}</p>
-            </div>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-body">
-            <div>
-              <p className="text-sm font-medium text-slate-400">Actions</p>
-              <p className="text-2xl font-bold text-slate-100">{userStats.admins}</p>
-            </div>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-body">
-            <div>
-              <p className="text-sm font-medium text-slate-400">Editors</p>
-              <p className="text-2xl font-bold text-slate-100">{userStats.editors}</p>
-            </div>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-body">
-            <div>
-              <p className="text-sm font-medium text-slate-400">Viewers</p>
-              <p className="text-2xl font-bold text-slate-100">{userStats.viewers}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="card">
-        <div className="card-body">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="form-label">Search Users</label>
-              <div className="relative">
-                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+          <div>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label className="form-label">Email Address</label>
                 <input
-                  type="text"
-                  className="form-input pl-10"
-                  placeholder="Search by email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className={`form-input ${formErrors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
+                  placeholder="user@example.com"
+                  disabled={creating}
                 />
+                {formErrors.email && (
+                  <p className="mt-1 text-sm text-red-400">{formErrors.email}</p>
+                )}
               </div>
-            </div>
-            <div>
-              <label className="form-label">Filter by Role</label>
-              <select
-                className="form-input"
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
+
+              <div>
+                <label className="form-label">Role</label>
+                <select
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  className={`form-input ${formErrors.role ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
+                  disabled={creating}
+                >
+                  <option value="viewer">Viewer </option>
+                  <option value="editor">Editor</option>
+                  <option value="admin">Admin</option>
+                </select>
+                {formErrors.role && (
+                  <p className="mt-1 text-sm text-red-400">{formErrors.role}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="form-label">Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className={`form-input pr-10 ${formErrors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
+                    placeholder="Enter password"
+                    disabled={creating}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200"
+                  >
+                    {showPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
+                  </button>
+                </div>
+                {formErrors.password && (
+                  <p className="mt-1 text-sm text-red-400">{formErrors.password}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="form-label">Confirm Password</label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className={`form-input pr-10 ${formErrors.confirmPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
+                    placeholder="Confirm password"
+                    disabled={creating}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200"
+                  >
+                    {showConfirmPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
+                  </button>
+                </div>
+                {formErrors.confirmPassword && (
+                  <p className="mt-1 text-sm text-red-400">{formErrors.confirmPassword}</p>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                className="btn-primary w-full"
+                disabled={creating}
               >
-                <option value="">All Roles</option>
-                <option value="admin">Admin</option>
-                <option value="editor">Editor</option>
-                <option value="viewer">Viewer</option>
-              </select>
-            </div>
+                {creating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Creating...
+                  </>
+                ) : (
+                  'Create User'
+                )}
+              </button>
+            </form>
           </div>
         </div>
-      </div>
 
-      {/* Users Table */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="text-xl font-semibold text-slate-100 font-heading">System Users</h2>
-        </div>
-        <div className="card-body p-0">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-800">
-              <thead className="bg-slate-800/50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
-                    User
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
-                    Current Role
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
-                    Last Login
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
-                    Created
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-slate-900/30 divide-y divide-slate-800">
-                {filteredUsers.map((user) => {
-                  const RoleIcon = getRoleIcon(user.role);
-                  return (
-                    <tr key={user._id} className="hover:bg-slate-800/50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
-                            <div className="h-10 w-10 rounded-full bg-slate-700 flex items-center justify-center">
-                              <span className="text-slate-300 font-medium text-sm">
-                                {user.email.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
+        {/* Right Side - Users List */}
+        <div>
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-slate-100 font-heading">All Users</h2>
+          </div>
+          <div>
+            {loading ? (
+              <div className="flex items-center justify-center h-64">
+                <LoadingSpinner size="lg" />
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <div className="mx-auto h-12 w-12 text-red-400 mb-4">
+                  <FiUser className="h-12 w-12" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-200 mb-2">Error loading users</h3>
+                <p className="text-red-400">Please try again later.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-800">
+                {users.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FiUser className="mx-auto h-12 w-12 text-slate-600" />
+                    <h3 className="mt-2 text-sm font-medium text-slate-200">No users found</h3>
+                    <p className="mt-1 text-sm text-slate-400">Create your first user using the form.</p>
+                  </div>
+                ) : (
+                  users.map((user) => (
+                    <div key={user._id} className="p-4 hover:bg-slate-800/50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="h-10 w-10 rounded-full bg-slate-700 flex items-center justify-center">
+                            <span className="text-slate-300 font-medium text-sm">
+                              {user.email.charAt(0).toUpperCase()}
+                            </span>
                           </div>
-                          <div className="ml-4">
+                          <div>
                             <div className="text-sm font-medium text-slate-200">
-                              {user.email.split('@')[0]}
-                            </div>
-                            <div className="text-sm text-slate-400">
                               {user.email}
                             </div>
+                            <div className="text-xs text-slate-400">
+                              {user.role} • {user.isActive ? 'Active' : 'Inactive'}
+                            </div>
                           </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <RoleIcon className="h-4 w-4 mr-2 text-slate-400" />
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadge(user.role)}`}>
-                            {user.role}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          user.isActive ? 'badge-success' : 'badge-gray'
-                        }`}>
-                          {user.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
-                        {user.lastLoginAt ? (
-                          <div className="flex items-center">
-                            <FiCalendar className="h-4 w-4 mr-1" />
-                            {new Date(user.lastLoginAt).toLocaleDateString()}
-                          </div>
-                        ) : (
-                          'Never'
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
-                        {new Date(user.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => handleToggleStatus(user)}
-                            className={`p-1 rounded hover:bg-slate-800 transition-colors ${
-                              user.isActive ? 'text-green-400 hover:text-green-300' : 'text-gray-400 hover:text-gray-300'
-                            }`}
-                            title={user.isActive ? 'Deactivate user' : 'Activate user'}
-                            disabled={toggleStatusMutation.isLoading}
-                          >
-                            {user.isActive ? <FiToggleRight className="h-4 w-4" /> : <FiToggleLeft className="h-4 w-4" />}
-                          </button>
-                          <button
-                            onClick={() => handleEditUser(user)}
-                            className="text-violet-400 hover:text-violet-300 p-1 rounded hover:bg-slate-800 transition-colors"
-                            title="Edit user"
-                          >
-                            <FiEdit3 className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUser(user)}
-                            className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-slate-800 transition-colors"
-                            title="Delete user"
-                            disabled={deleteUserMutation.isLoading}
-                          >
-                            <FiTrash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        <button
+                          onClick={() => handleDeleteUser(user)}
+                          className="text-red-400 hover:text-red-300 p-2 rounded hover:bg-red-900/20 transition-colors"
+                          title="Delete user"
+                          disabled={deleting}
+                        >
+                          <FiTrash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
-          
-          {filteredUsers.length === 0 && (
-            <div className="text-center py-12">
-              <FiUser className="mx-auto h-12 w-12 text-slate-600" />
-              <h3 className="mt-2 text-sm font-medium text-slate-200">No users found</h3>
-              <p className="mt-1 text-sm text-slate-400">
-                {searchTerm || roleFilter ? 'Try adjusting your search criteria.' : 'Get started by creating a new user.'}
-              </p>
-            </div>
-          )}
         </div>
       </div>
-
-      {/* Modals */}
-      <NewUserModal
-        isOpen={isNewUserModalOpen}
-        onClose={() => setIsNewUserModalOpen(false)}
-        onUserCreate={handleUserUpdate}
-      />
-      
-      <EditUserModal
-        isOpen={isEditUserModalOpen}
-        onClose={() => setIsEditUserModalOpen(false)}
-        user={selectedUser}
-        onUserUpdate={handleUserUpdate}
-      />
     </div>
   );
 };

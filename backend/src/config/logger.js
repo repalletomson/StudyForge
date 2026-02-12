@@ -1,17 +1,12 @@
-/**
- * Winston logger configuration
- */
 const winston = require('winston');
 const DailyRotateFile = require('winston-daily-rotate-file');
 
-// Define log format
 const logFormat = winston.format.combine(
   winston.format.timestamp(),
   winston.format.errors({ stack: true }),
   winston.format.json()
 );
 
-// Create logger instance
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: logFormat,
@@ -44,7 +39,6 @@ const logger = winston.createLogger({
   ]
 });
 
-// Create logs directory if it doesn't exist
 const fs = require('fs');
 const path = require('path');
 const logsDir = path.join(__dirname, '../../logs');

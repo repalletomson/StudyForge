@@ -1,11 +1,7 @@
-/**
- * Asset Upload Component with drag & drop
- */
 import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { FiUpload, FiX, FiImage } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-
 const AssetUploader = ({ 
   entityId, 
   entityType, 
@@ -18,42 +14,34 @@ const AssetUploader = ({
 }) => {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState(currentUrl);
-
   // Update preview when currentUrl changes (from parent component refresh)
   useEffect(() => {
     console.log(`AssetUploader ${variant} - currentUrl changed:`, currentUrl);
     setPreview(currentUrl);
   }, [currentUrl, variant]);
-
   const onDrop = useCallback(async (acceptedFiles) => {
     const file = acceptedFiles[0];
     if (!file) return;
-
     // Validate file type
     if (!file.type.startsWith('image/')) {
       toast.error('Please upload an image file');
       return;
     }
-
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast.error('File size must be less than 5MB');
       return;
     }
-
     setUploading(true);
-
     try {
       // Create immediate preview from file
       const previewUrl = URL.createObjectURL(file);
       setPreview(previewUrl);
-
       // Create FormData for file upload
       const formData = new FormData();
       formData.append('file', file);
       formData.append('language', language);
       formData.append('variant', variant);
-      
       // Call API to upload actual file
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const response = await fetch(`${apiUrl}/api/admin/${entityType}s/${entityId}/assets`, {
@@ -63,27 +51,21 @@ const AssetUploader = ({
         },
         body: formData
       });
-
       if (!response.ok) {
         const errorData = await response.text();
         console.error('Upload failed:', response.status, errorData);
         throw new Error(`Failed to upload file: ${response.status}`);
       }
-
       const savedAsset = await response.json();
       console.log('Asset saved successfully:', savedAsset);
-
       // Update preview with the server URL
       const serverUrl = `${apiUrl}/api/assets/${savedAsset.fileId}`;
       setPreview(serverUrl);
-      
       // Notify parent component
       if (onUploadSuccess) {
         onUploadSuccess(serverUrl);
       }
-      
       toast.success(`${variant} image uploaded successfully!`);
-
     } catch (error) {
       console.error('Upload error:', error);
       toast.error(`Failed to upload ${variant} image: ${error.message}`);
@@ -92,91 +74,48 @@ const AssetUploader = ({
       setUploading(false);
     }
   }, [entityId, entityType, language, variant, currentUrl, onUploadSuccess]);
-
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.webp']
+      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp']
     },
     multiple: false,
     disabled: uploading
   });
 
-  const removeAsset = async () => {
-    try {
-      setUploading(true);
-      
-      // Simulate API call to remove asset
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setPreview(null);
-      onUploadSuccess?.(null);
-      toast.success('Asset removed successfully!');
-      
-    } catch (error) {
-      toast.error('Failed to remove asset');
-    } finally {
-      setUploading(false);
-    }
-  };
-
   if (showAsButton) {
-    // Show as button overlay for existing images
     return (
-      <div {...getRootProps()} className="cursor-pointer">
+      <button
+        {...getRootProps()}
+        className={`btn-secondary ${className} ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+        disabled={uploading}
+      >
         <input {...getInputProps()} />
-        <button
-          type="button"
-          className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
-          disabled={uploading}
-        >
-          <FiUpload className="w-4 h-4 text-gray-600" />
-        </button>
-      </div>
+        <FiUpload className="w-4 h-4 mr-2" />
+        {uploading ? 'Uploading...' : `Upload ${variant}`}
+      </button>
     );
   }
 
   return (
     <div className={`relative ${className}`}>
       {preview ? (
-        // Show current asset with hover overlay
+        // Show preview with upload overlay
         <div className="relative group">
           <img
             src={preview}
-            alt={`${variant} ${language}`}
-            className="w-full h-40 object-cover rounded-lg border-2 border-green-300"
+            alt={`${variant} preview`}
+            className="w-full h-32 object-cover rounded-lg border border-gray-200"
           />
-          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center">
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-2">
-              <div {...getRootProps()} className="cursor-pointer">
-                <input {...getInputProps()} />
-                <button
-                  type="button"
-                  className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
-                  disabled={uploading}
-                >
-                  <FiUpload className="w-4 h-4 text-gray-600" />
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={removeAsset}
-                className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
-                disabled={uploading}
-              >
-                <FiX className="w-4 h-4 text-red-600" />
-              </button>
+          <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center">
+            <div
+              {...getRootProps()}
+              className="cursor-pointer p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <input {...getInputProps()} />
+              <FiUpload className="w-5 h-5 text-gray-700" />
             </div>
           </div>
-          {uploading && (
-            <div className="absolute inset-0 bg-white bg-opacity-90 rounded-lg flex items-center justify-center">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-2"></div>
-                <p className="text-xs text-gray-600">Uploading...</p>
-              </div>
-            </div>
-          )}
-          {/* Success indicator */}
           <div className="absolute top-2 right-2">
             <span className="px-2 py-1 bg-green-500 text-white text-xs font-medium rounded">
               ✓ Uploaded
@@ -212,8 +151,7 @@ const AssetUploader = ({
           )}
         </div>
       )}
-      
-      {/* Variant label */}
+      {}
       <div className="absolute -top-2 -left-2">
         <span className="px-2 py-1 bg-primary-600 text-white text-xs font-medium rounded-md shadow-sm">
           {variant}
@@ -222,5 +160,4 @@ const AssetUploader = ({
     </div>
   );
 };
-
 export default AssetUploader;

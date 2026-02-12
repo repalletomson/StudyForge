@@ -1,9 +1,5 @@
-/**
- * User model for authentication and authorization
- */
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const { USER_ROLE } = require('./constants');
 
 const userSchema = new mongoose.Schema({
   email: {
@@ -11,33 +7,29 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true,
     lowercase: true,
-    trim: true,
-    match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please enter a valid email']
+    trim: true
   },
   passwordHash: {
     type: String,
-    required: true,
-    minlength: 6
+    required: true
   },
   firstName: {
     type: String,
-    trim: true,
-    maxlength: 50
+    trim: true
   },
   lastName: {
     type: String,
-    trim: true,
-    maxlength: 50
+    trim: true
   },
   avatar: {
-    type: String, // URL to profile image
+    type: String,
     default: null
   },
   role: {
     type: String,
     required: true,
-    enum: Object.values(USER_ROLE),
-    default: USER_ROLE.VIEWER
+    enum: ['admin', 'editor', 'viewer'],
+    default: 'viewer'
   },
   isActive: {
     type: Boolean,
@@ -46,93 +38,48 @@ const userSchema = new mongoose.Schema({
   lastLoginAt: {
     type: Date
   },
-  // Profile information
   bio: {
-    type: String,
-    maxlength: 500
+    type: String
   },
   phone: {
-    type: String,
-    trim: true
-  },
-  // Account settings
-  emailVerified: {
-    type: Boolean,
-    default: false
+    type: String
   }
 }, {
-  timestamps: true,
-  toJSON: {
-    transform: function(doc, ret) {
-      delete ret.passwordHash;
-      delete ret.__v;
-      return ret;
-    }
+  timestamps: true
+});
+
+userSchema.set('toJSON', {
+  transform: (doc, ret) => {
+    delete ret.passwordHash;
+    delete ret.__v;
+    return ret;
   }
 });
 
-// Index for performance - remove duplicate email index since unique: true creates it
-userSchema.index({ role: 1 });
-
-/**
- * Virtual for full name
- */
-userSchema.virtual('fullName').get(function() {
-  if (this.firstName && this.lastName) {
-    return `${this.firstName} ${this.lastName}`;
-  }
-  return this.firstName || this.lastName || this.email.split('@')[0];
-});
-
-/**
- * Hash password before saving
- */
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('passwordHash')) return next();
-  
-  try {
-    const salt = await bcrypt.genSalt(12);
-    this.passwordHash = await bcrypt.hash(this.passwordHash, salt);
-    next();
-  } catch (error) {
-    next(error);
+  if (!this.isModified('passwordHash')) {
+    return next();
   }
+  
+  const salt = await bcrypt.genSalt(10);
+  this.passwordHash = await bcrypt.hash(this.passwordHash, salt);
+  next();
 });
 
-/**
- * Compare password method
- * @param {string} candidatePassword - Password to compare
- * @returns {Promise<boolean>}
- */
-userSchema.methods.comparePassword = async function(candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.passwordHash);
+userSchema.methods.comparePassword = function(password) {
+  return bcrypt.compare(password, this.passwordHash);
 };
 
-/**
- * Update last login timestamp
- * @returns {Promise<void>}
- */
-userSchema.methods.updateLastLogin = async function() {
+userSchema.methods.updateLastLogin = function() {
   this.lastLoginAt = new Date();
   return this.save();
 };
 
-/**
- * Check if user has permission for action
- * @param {string} action - Action to check
- * @returns {boolean}
- */
-userSchema.methods.hasPermission = function(action) {
-  const permissions = {
-    admin: ['read', 'write', 'delete', 'manage_users'],
-    editor: ['read', 'write', 'delete'],
-    viewer: ['read']
-  };
-  
-  return permissions[this.role]?.includes(action) || false;
+userSchema.methods.getFullName = function() {
+  if (this.firstName && this.lastName) {
+    return `${this.firstName} ${this.lastName}`;
+  }
+  return this.firstName || this.email.split('@')[0];
 };
-
-// Export constants
-userSchema.statics.ROLE = USER_ROLE;
 
 module.exports = mongoose.model('User', userSchema);

@@ -1,11 +1,6 @@
-/**
- * New User Modal Component
- */
 import { useState } from 'react';
-import { useMutation, useQueryClient } from 'react-query';
 import { FiX, FiUser, FiMail, FiShield, FiEye, FiEyeOff } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-
 const NewUserModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
     email: '',
@@ -16,19 +11,16 @@ const NewUserModal = ({ isOpen, onClose }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
-
-  const queryClient = useQueryClient();
-
-  const createUserMutation = useMutation(
-    async (userData) => {
+  const [creating, setCreating] = useState(false);
+  const createUser = async (userData) => {
+    try {
+      setCreating(true);
       // Mock API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
       if (userData.email === 'existing@example.com') {
         throw new Error('User with this email already exists');
       }
-      
-      return {
+      const newUser = {
         _id: Date.now().toString(),
         email: userData.email,
         role: userData.role,
@@ -36,62 +28,49 @@ const NewUserModal = ({ isOpen, onClose }) => {
         createdAt: new Date(),
         lastLoginAt: null
       };
-    },
-    {
-      onSuccess: (newUser) => {
-        queryClient.invalidateQueries('users');
-        toast.success(`User ${newUser.email} created successfully`);
-        handleClose();
-      },
-      onError: (error) => {
-        toast.error(error.message || 'Failed to create user');
-      }
+      toast.success(`User ${newUser.email} created successfully`);
+      handleClose();
+    } catch (error) {
+      console.error('Error creating user:', error);
+      toast.error(error.message || 'Failed to create user');
+    } finally {
+      setCreating(false);
     }
-  );
-
+  };
   const validateForm = () => {
     const newErrors = {};
-
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email is invalid';
     }
-
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters';
     }
-
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = 'Please confirm password';
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
-
     if (!formData.role) {
       newErrors.role = 'Role is required';
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    
     if (!validateForm()) {
       return;
     }
-
-    createUserMutation.mutate({
+    createUser({
       email: formData.email,
       password: formData.password,
       role: formData.role
     });
   };
-
   const handleClose = () => {
     setFormData({
       email: '',
@@ -104,14 +83,12 @@ const NewUserModal = ({ isOpen, onClose }) => {
     setShowConfirmPassword(false);
     onClose();
   };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
-    
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -120,9 +97,7 @@ const NewUserModal = ({ isOpen, onClose }) => {
       }));
     }
   };
-
   if (!isOpen) return null;
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -130,7 +105,6 @@ const NewUserModal = ({ isOpen, onClose }) => {
           className="fixed inset-0 transition-opacity bg-slate-900/75 backdrop-blur-sm"
           onClick={handleClose}
         />
-        
         <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-slate-900 shadow-2xl rounded-2xl animate-slide-up border border-slate-800">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
@@ -153,7 +127,6 @@ const NewUserModal = ({ isOpen, onClose }) => {
               <FiX className="w-5 h-5" />
             </button>
           </div>
-
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="form-label">
@@ -167,13 +140,12 @@ const NewUserModal = ({ isOpen, onClose }) => {
                 onChange={handleChange}
                 className={`form-input ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                 placeholder="user@example.com"
-                disabled={createUserMutation.isLoading}
+                disabled={creating}
               />
               {errors.email && (
                 <p className="mt-1 text-sm text-red-400">{errors.email}</p>
               )}
             </div>
-
             <div>
               <label className="form-label">
                 <FiShield className="inline w-4 h-4 mr-2" />
@@ -184,7 +156,7 @@ const NewUserModal = ({ isOpen, onClose }) => {
                 value={formData.role}
                 onChange={handleChange}
                 className={`form-input ${errors.role ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
-                disabled={createUserMutation.isLoading}
+                disabled={creating}
               >
                 <option value="viewer">Viewer - Read-only access</option>
                 <option value="editor">Editor - Can create and edit content</option>
@@ -194,7 +166,6 @@ const NewUserModal = ({ isOpen, onClose }) => {
                 <p className="mt-1 text-sm text-red-400">{errors.role}</p>
               )}
             </div>
-
             <div>
               <label className="form-label">Password</label>
               <div className="relative">
@@ -205,7 +176,7 @@ const NewUserModal = ({ isOpen, onClose }) => {
                   onChange={handleChange}
                   className={`form-input pr-10 ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                   placeholder="Enter password"
-                  disabled={createUserMutation.isLoading}
+                  disabled={creating}
                 />
                 <button
                   type="button"
@@ -219,7 +190,6 @@ const NewUserModal = ({ isOpen, onClose }) => {
                 <p className="mt-1 text-sm text-red-400">{errors.password}</p>
               )}
             </div>
-
             <div>
               <label className="form-label">Confirm Password</label>
               <div className="relative">
@@ -230,7 +200,7 @@ const NewUserModal = ({ isOpen, onClose }) => {
                   onChange={handleChange}
                   className={`form-input pr-10 ${errors.confirmPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                   placeholder="Confirm password"
-                  disabled={createUserMutation.isLoading}
+                  disabled={creating}
                 />
                 <button
                   type="button"
@@ -244,22 +214,21 @@ const NewUserModal = ({ isOpen, onClose }) => {
                 <p className="mt-1 text-sm text-red-400">{errors.confirmPassword}</p>
               )}
             </div>
-
             <div className="flex items-center justify-end space-x-4 pt-6 border-t border-slate-800">
               <button
                 type="button"
                 onClick={handleClose}
                 className="btn-secondary"
-                disabled={createUserMutation.isLoading}
+                disabled={creating}
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 className="btn-primary"
-                disabled={createUserMutation.isLoading}
+                disabled={creating}
               >
-                {createUserMutation.isLoading ? (
+                {creating ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     Creating...
@@ -275,5 +244,4 @@ const NewUserModal = ({ isOpen, onClose }) => {
     </div>
   );
 };
-
 export default NewUserModal;

@@ -1,6 +1,3 @@
-/**
- * Health check script for Docker container
- */
 const http = require('http');
 
 const options = {

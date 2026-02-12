@@ -1,112 +1,44 @@
-/**
- * Lesson controller for CRUD operations
- */
 const Lesson = require('../models/Lesson');
 const Term = require('../models/Term');
-const logger = require('../config/logger');
+const LessonAsset = require('../models/LessonAsset');
+const { withTransaction, withRetry } = require('../utils/concurrency');
 
-/**
- * Create application error
- */
-const createError = (message, statusCode = 500, code = 'APPLICATION_ERROR') => {
-  const error = new Error(message);
-  error.statusCode = statusCode;
-  error.code = code;
-  return error;
-};
-
-/**
- * GET /api/admin/terms/:termId/lessons
- * Get lessons for a term
- */
-const getLessons = async (req, res, next) => {
+const getLessons = async (req, res) => {
   try {
-    console.log('=== DEBUG GET LESSONS ===');
     const { termId } = req.params;
-    console.log('1. termId:', termId);
 
-    // Basic validation
-    if (!termId) {
-      console.log('2. ERROR: No termId');
-      throw createError('Term ID is required', 400, 'VALIDATION_ERROR');
+    if (!termId || !termId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: 'Invalid term ID' });
     }
 
-    // Validate ObjectId format
-    if (!termId.match(/^[0-9a-fA-F]{24}$/)) {
-      console.log('3. ERROR: Invalid ObjectId format');
-      throw createError('Invalid term ID format', 400, 'VALIDATION_ERROR');
-    }
+    const lessons = await Lesson.find({ termId }).lean();
 
-    console.log('4. About to query Lesson model');
-    console.log('5. Lesson model:', typeof Lesson);
-
-    // Try a simple query first
-    let lessons;
-    try {
-      console.log('6. Executing Lesson.find query...');
-      lessons = await Lesson.find({ termId }).lean();
-      console.log('7. Query successful, found:', lessons.length, 'lessons');
-    } catch (dbError) {
-      console.error('8. Database query error:', dbError);
-      throw dbError;
-    }
-
-    // Get assets for each lesson
-    const LessonAsset = require('../models/LessonAsset');
     const lessonsWithAssets = await Promise.all(
       lessons.map(async (lesson) => {
         const assets = await LessonAsset.find({ lessonId: lesson._id });
         return {
           ...lesson,
           assets: assets.reduce((acc, asset) => {
-            // Pluralize asset type for frontend compatibility
-            const assetTypeKey = asset.assetType === 'thumbnail' ? 'thumbnails' : 
-                               asset.assetType === 'poster' ? 'posters' : asset.assetType;
-            if (!acc[assetTypeKey]) acc[assetTypeKey] = {};
-            if (!acc[assetTypeKey][asset.language])
-              acc[assetTypeKey][asset.language] = {};
-            acc[assetTypeKey][asset.language][asset.variant] = asset.url;
+            const key = 'thumbnails';
+            if (!acc[key]) acc[key] = {};
+            if (!acc[key][asset.language]) acc[key][asset.language] = {};
+            acc[key][asset.language][asset.variant] = asset.url;
             return acc;
-          }, {}),
+          }, {})
         };
       })
     );
 
-    // Sort lessons
-    try {
-      console.log('9. Sorting lessons...');
-      lessonsWithAssets.sort((a, b) => a.lessonNumber - b.lessonNumber);
-      console.log('10. Sorting successful');
-    } catch (sortError) {
-      console.error('11. Sorting error:', sortError);
-      // Continue without sorting if it fails
-    }
+    lessonsWithAssets.sort((a, b) => a.lessonNumber - b.lessonNumber);
 
-    console.log('12. About to send response');
     res.json({ lessons: lessonsWithAssets });
-    console.log('13. Response sent successfully');
-
   } catch (error) {
-    console.error('=== ERROR IN GET LESSONS ===');
-    console.error('Error type:', error.constructor.name);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    
-    logger.error('Error getting lessons', {
-      termId: req.params.termId,
-      error: error.message,
-      stack: error.stack,
-      correlationId: req.correlationId
-    });
-    next(error);
+    console.error('Get lessons error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * POST /api/admin/terms/:termId/lessons
- * Create new lesson
- */
-const createLesson = async (req, res, next) => {
+const createLesson = async (req, res) => {
   try {
     const { termId } = req.params;
     const {
@@ -123,111 +55,81 @@ const createLesson = async (req, res, next) => {
       subtitleUrlsByLanguage
     } = req.body;
 
-    // Validate ObjectId format
     if (!termId.match(/^[0-9a-fA-F]{24}$/)) {
-      throw createError('Invalid term ID format', 400, 'VALIDATION_ERROR');
+      return res.status(400).json({ message: 'Invalid term ID' });
     }
 
-    // Verify term exists
-    const term = await Term.findById(termId);
-    if (!term) {
-      throw createError('Term not found', 404, 'RESOURCE_NOT_FOUND');
-    }
+    // Use transaction to ensure atomicity
+    const lesson = await withTransaction(async (session) => {
+      const term = await Term.findById(termId).session(session);
+      if (!term) {
+        throw new Error('Term not found');
+      }
 
-    // Check if lesson number already exists for this term
-    const existingLesson = await Lesson.findOne({ termId, lessonNumber });
-    if (existingLesson) {
-      throw createError(`Lesson number ${lessonNumber} already exists for this term`, 409, 'DUPLICATE_LESSON_NUMBER');
-    }
+      // Check for existing lesson with retry for race conditions
+      const existingLesson = await Lesson.findOne({ termId, lessonNumber }).session(session);
+      if (existingLesson) {
+        throw new Error(`Lesson number ${lessonNumber} already exists`);
+      }
 
-    const lesson = new Lesson({
-      termId,
-      lessonNumber,
-      title,
-      contentType,
-      durationMs,
-      isPaid,
-      contentLanguagePrimary,
-      contentLanguagesAvailable,
-      contentUrlsByLanguage: new Map(Object.entries(contentUrlsByLanguage || {})),
-      articleContentByLanguage: new Map(Object.entries(articleContentByLanguage || {})),
-      subtitleLanguages,
-      subtitleUrlsByLanguage: new Map(Object.entries(subtitleUrlsByLanguage || {}))
-    });
+      const newLesson = new Lesson({
+        termId,
+        lessonNumber,
+        title,
+        contentType,
+        durationMs,
+        isPaid,
+        contentLanguagePrimary,
+        contentLanguagesAvailable,
+        contentUrlsByLanguage: new Map(Object.entries(contentUrlsByLanguage || {})),
+        articleContentByLanguage: new Map(Object.entries(articleContentByLanguage || {})),
+        subtitleLanguages,
+        subtitleUrlsByLanguage: new Map(Object.entries(subtitleUrlsByLanguage || {}))
+      });
 
-    await lesson.save();
-
-    logger.info('Lesson created', {
-      lessonId: lesson._id,
-      termId,
-      title,
-      userId: req.user._id,
-      correlationId: req.correlationId
+      return await newLesson.save({ session });
     });
 
     res.status(201).json(lesson);
-
   } catch (error) {
-    // Handle MongoDB duplicate key error
-    if (error.code === 11000) {
-      const field = Object.keys(error.keyPattern || {})[0];
-      if (field === 'lessonNumber') {
-        next(createError(`Lesson number ${error.keyValue?.lessonNumber} already exists for this term`, 409, 'DUPLICATE_LESSON_NUMBER'));
-      } else {
-        next(createError('Duplicate entry detected', 409, 'DUPLICATE_ERROR'));
-      }
-    } else {
-      next(error);
+    if (error.code === 11000 || error.message.includes('already exists')) {
+      return res.status(409).json({ message: 'Lesson number already exists' });
     }
+    console.error('Create lesson error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * GET /api/admin/lessons/:id
- * Get lesson by ID
- */
-const getLesson = async (req, res, next) => {
+const getLesson = async (req, res) => {
   try {
     const lesson = await Lesson.findById(req.params.id).lean();
     if (!lesson) {
-      throw createError('Lesson not found', 404, 'RESOURCE_NOT_FOUND');
+      return res.status(404).json({ message: 'Lesson not found' });
     }
 
-    // Get assets for this lesson
-    const LessonAsset = require('../models/LessonAsset');
     const assets = await LessonAsset.find({ lessonId: lesson._id });
-    
-    // Add assets to lesson
-    const lessonWithAssets = {
+
+    res.json({
       ...lesson,
       assets: assets.reduce((acc, asset) => {
-        // Pluralize asset type for frontend compatibility
-        const assetTypeKey = asset.assetType === 'thumbnail' ? 'thumbnails' : 
-                           asset.assetType === 'poster' ? 'posters' : asset.assetType;
-        if (!acc[assetTypeKey]) acc[assetTypeKey] = {};
-        if (!acc[assetTypeKey][asset.language])
-          acc[assetTypeKey][asset.language] = {};
-        acc[assetTypeKey][asset.language][asset.variant] = asset.url;
+        const key = 'thumbnails';
+        if (!acc[key]) acc[key] = {};
+        if (!acc[key][asset.language]) acc[key][asset.language] = {};
+        acc[key][asset.language][asset.variant] = asset.url;
         return acc;
-      }, {}),
-    };
-
-    res.json(lessonWithAssets);
-
+      }, {})
+    });
   } catch (error) {
-    next(error);
+    console.error('Get lesson error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * PUT /api/admin/lessons/:id
- * Update lesson
- */
-const updateLesson = async (req, res, next) => {
+const updateLesson = async (req, res) => {
   try {
     const lesson = await Lesson.findById(req.params.id);
     if (!lesson) {
-      throw createError('Lesson not found', 404, 'RESOURCE_NOT_FOUND');
+      return res.status(404).json({ message: 'Lesson not found' });
     }
 
     const {
@@ -243,7 +145,6 @@ const updateLesson = async (req, res, next) => {
       subtitleUrlsByLanguage
     } = req.body;
 
-    // Update fields
     if (title !== undefined) lesson.title = title;
     if (contentType !== undefined) lesson.contentType = contentType;
     if (durationMs !== undefined) lesson.durationMs = durationMs;
@@ -262,209 +163,125 @@ const updateLesson = async (req, res, next) => {
     }
 
     await lesson.save();
-
-    logger.info('Lesson updated', {
-      lessonId: lesson._id,
-      title: lesson.title,
-      userId: req.user._id,
-      correlationId: req.correlationId
-    });
-
     res.json(lesson);
-
   } catch (error) {
-    next(error);
+    console.error('Update lesson error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * DELETE /api/admin/lessons/:id
- * Delete lesson and all related data
- */
-const deleteLesson = async (req, res, next) => {
+const deleteLesson = async (req, res) => {
   try {
     const lesson = await Lesson.findById(req.params.id);
     if (!lesson) {
-      throw createError('Lesson not found', 404, 'RESOURCE_NOT_FOUND');
+      return res.status(404).json({ message: 'Lesson not found' });
     }
 
-    // Delete all related data
-    const LessonAsset = require('../models/LessonAsset');
-    
-    // Delete lesson assets
     await LessonAsset.deleteMany({ lessonId: lesson._id });
-    
-    // Delete the lesson itself
     await Lesson.findByIdAndDelete(req.params.id);
 
-    logger.info('Lesson and related data deleted', {
-      lessonId: lesson._id,
-      title: lesson.title,
-      userId: req.user._id,
-      correlationId: req.correlationId
-    });
-
     res.status(204).send();
-
   } catch (error) {
-    next(error);
+    console.error('Delete lesson error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * POST /api/admin/lessons/:id/publish
- * Publish lesson immediately
- */
-const publishLesson = async (req, res, next) => {
+const publishLesson = async (req, res) => {
   try {
     const lesson = await Lesson.findById(req.params.id);
     if (!lesson) {
-      throw createError('Lesson not found', 404, 'RESOURCE_NOT_FOUND');
+      return res.status(404).json({ message: 'Lesson not found' });
     }
 
-    // Use the lesson's publish method which handles all validation and auto-publishing
     await lesson.publish();
-
-    logger.info('Lesson published', {
-      lessonId: lesson._id,
-      title: lesson.title,
-      userId: req.user._id,
-      correlationId: req.correlationId
-    });
-
     res.json(lesson);
-
   } catch (error) {
-    next(error);
+    console.error('Publish lesson error:', error);
+    res.status(400).json({ message: error.message });
   }
 };
 
-/**
- * POST /api/admin/lessons/:id/schedule
- * Schedule lesson for future publication
- */
-const scheduleLesson = async (req, res, next) => {
+const scheduleLesson = async (req, res) => {
   try {
     const { publishAt } = req.body;
 
     if (!publishAt) {
-      throw createError('Publish date is required', 400, 'VALIDATION_ERROR');
+      return res.status(400).json({ message: 'Publish date required' });
     }
 
     const lesson = await Lesson.findById(req.params.id);
     if (!lesson) {
-      throw createError('Lesson not found', 404, 'RESOURCE_NOT_FOUND');
+      return res.status(404).json({ message: 'Lesson not found' });
     }
 
     const publishAtDate = new Date(publishAt);
     if (publishAtDate <= new Date()) {
-      throw createError('Scheduled publish date must be in the future', 400, 'VALIDATION_ERROR');
+      return res.status(400).json({ message: 'Publish date must be in future' });
     }
 
-    // Use the lesson's schedule method which handles all validation
     await lesson.schedule(publishAtDate);
-
-    logger.info('Lesson scheduled', {
-      lessonId: lesson._id,
-      title: lesson.title,
-      publishAt,
-      userId: req.user._id,
-      correlationId: req.correlationId
-    });
-
     res.json(lesson);
-
   } catch (error) {
-    next(error);
+    console.error('Schedule lesson error:', error);
+    res.status(400).json({ message: error.message });
   }
 };
 
-/**
- * POST /api/admin/lessons/:id/archive
- * Archive lesson
- */
-const archiveLesson = async (req, res, next) => {
+const archiveLesson = async (req, res) => {
   try {
     const lesson = await Lesson.findById(req.params.id);
     if (!lesson) {
-      throw createError('Lesson not found', 404, 'RESOURCE_NOT_FOUND');
+      return res.status(404).json({ message: 'Lesson not found' });
     }
 
-    // Use the lesson's archive method which handles status transitions
     await lesson.archive();
-
-    logger.info('Lesson archived', {
-      lessonId: lesson._id,
-      title: lesson.title,
-      previousStatus: lesson.status,
-      userId: req.user._id,
-      correlationId: req.correlationId
-    });
-
     res.json(lesson);
-
   } catch (error) {
-    next(error);
+    console.error('Archive lesson error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * PUT /api/admin/lessons/:id/assets
- * Update lesson assets
- */
-const updateLessonAssets = async (req, res, next) => {
+const updateLessonAssets = async (req, res) => {
   try {
     const { id } = req.params;
     const { language, assetType, assets } = req.body;
 
-    // Validate lesson exists
     const lesson = await Lesson.findById(id);
     if (!lesson) {
-      throw createError("Lesson not found", 404, "RESOURCE_NOT_FOUND");
+      return res.status(404).json({ message: 'Lesson not found' });
     }
 
-    // Validate required fields
     if (!language || !assetType || !assets) {
-      throw createError("Language, asset type, and assets are required", 400, "VALIDATION_ERROR");
+      return res.status(400).json({ message: 'Language, asset type, and assets required' });
     }
 
-    // Delete existing assets for this lesson/language/type combination
-    const LessonAsset = require('../models/LessonAsset');
     await LessonAsset.deleteMany({
       lessonId: id,
       language,
       assetType
     });
 
-    // Create new assets
-    const assetPromises = Object.entries(assets).map(([variant, url]) => {
-      const asset = new LessonAsset({
-        lessonId: id,
-        language,
-        variant,
-        assetType,
-        url: url.trim()
-      });
-      return asset.save();
-    });
-
-    await Promise.all(assetPromises);
-
-    logger.info("Lesson assets updated", {
-      lessonId: id,
-      language,
-      assetType,
-      variants: Object.keys(assets),
-      userId: req.user._id,
-      correlationId: req.correlationId,
-    });
+    await Promise.all(
+      Object.entries(assets).map(([variant, url]) =>
+        new LessonAsset({
+          lessonId: id,
+          language,
+          variant,
+          assetType,
+          url: url.trim()
+        }).save()
+      )
+    );
 
     res.json({ 
-      message: "Lesson assets updated successfully",
+      message: 'Assets updated',
       assets: Object.keys(assets)
     });
   } catch (error) {
-    next(error);
+    console.error('Update assets error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 

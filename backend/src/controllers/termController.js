@@ -1,55 +1,33 @@
-/**
- * Term controller for CRUD operations
- */
 const Term = require('../models/Term');
 const Program = require('../models/Program');
-const logger = require('../config/logger');
+const Lesson = require('../models/Lesson');
+const LessonAsset = require('../models/LessonAsset');
 
-/**
- * Create application error
- */
-const createError = (message, statusCode = 500, code = 'APPLICATION_ERROR') => {
-  const error = new Error(message);
-  error.statusCode = statusCode;
-  error.code = code;
-  return error;
-};
-
-/**
- * GET /api/admin/programs/:programId/terms
- * Get terms for a program
- */
-const getTerms = async (req, res, next) => {
+const getTerms = async (req, res) => {
   try {
     const { programId } = req.params;
 
-    // Verify program exists
     const program = await Program.findById(programId);
     if (!program) {
-      throw createError('Program not found', 404, 'RESOURCE_NOT_FOUND');
+      return res.status(404).json({ message: 'Program not found' });
     }
 
     const terms = await Term.find({ programId }).sort({ termNumber: 1 });
     res.json({ terms });
-
   } catch (error) {
-    next(error);
+    console.error('Get terms error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * POST /api/admin/programs/:programId/terms
- * Create new term
- */
-const createTerm = async (req, res, next) => {
+const createTerm = async (req, res) => {
   try {
     const { programId } = req.params;
     const { termNumber, title } = req.body;
 
-    // Verify program exists
     const program = await Program.findById(programId);
     if (!program) {
-      throw createError('Program not found', 404, 'RESOURCE_NOT_FOUND');
+      return res.status(404).json({ message: 'Program not found' });
     }
 
     const term = new Term({
@@ -59,181 +37,100 @@ const createTerm = async (req, res, next) => {
     });
 
     await term.save();
-
-    logger.info('Term created', {
-      termId: term._id,
-      programId,
-      termNumber,
-      userId: req.user._id,
-      correlationId: req.correlationId
-    });
-
     res.status(201).json(term);
-
   } catch (error) {
-    next(error);
+    console.error('Create term error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * GET /api/admin/terms/:id
- * Get term by ID
- */
-const getTerm = async (req, res, next) => {
+const getTerm = async (req, res) => {
   try {
     const term = await Term.findById(req.params.id);
     if (!term) {
-      throw createError('Term not found', 404, 'RESOURCE_NOT_FOUND');
+      return res.status(404).json({ message: 'Term not found' });
     }
-
     res.json(term);
-
   } catch (error) {
-    next(error);
+    console.error('Get term error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * PUT /api/admin/terms/:id
- * Update term
- */
-const updateTerm = async (req, res, next) => {
+const updateTerm = async (req, res) => {
   try {
     const { title } = req.body;
 
     const term = await Term.findById(req.params.id);
     if (!term) {
-      throw createError('Term not found', 404, 'RESOURCE_NOT_FOUND');
+      return res.status(404).json({ message: 'Term not found' });
     }
 
     if (title !== undefined) term.title = title;
     await term.save();
 
-    logger.info('Term updated', {
-      termId: term._id,
-      userId: req.user._id,
-      correlationId: req.correlationId
-    });
-
     res.json(term);
-
   } catch (error) {
-    next(error);
+    console.error('Update term error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * DELETE /api/admin/terms/:id
- * Delete term and all associated lessons
- */
-const deleteTerm = async (req, res, next) => {
+const deleteTerm = async (req, res) => {
   try {
     const term = await Term.findById(req.params.id);
     if (!term) {
-      throw createError('Term not found', 404, 'RESOURCE_NOT_FOUND');
+      return res.status(404).json({ message: 'Term not found' });
     }
 
-    // Get the program before deletion
     const program = await Program.findById(term.programId);
-
-    // Delete all lessons associated with this term
-    const Lesson = require('../models/Lesson');
-    const LessonAsset = require('../models/LessonAsset');
-    
     const lessons = await Lesson.find({ termId: term._id });
-    
-    // Delete lesson assets for all lessons in this term
+
     for (const lesson of lessons) {
       await LessonAsset.deleteMany({ lessonId: lesson._id });
     }
-    
-    // Delete all lessons in this term
-    await Lesson.deleteMany({ termId: term._id });
 
-    // Delete the term itself
+    await Lesson.deleteMany({ termId: term._id });
     await Term.findByIdAndDelete(req.params.id);
 
-    // Check if program should be reverted to draft status
     if (program && program.status === 'published') {
-      const wasReverted = await program.autoDraft();
-      
-      if (wasReverted && program.status === 'draft') {
-        logger.info('Program reverted to draft status - no published lessons remain after term deletion', {
-          programId: program._id,
-          programTitle: program.title,
-          termId: term._id,
-          deletedLessonsCount: lessons.length,
-          userId: req.user._id,
-          correlationId: req.correlationId
-        });
-      }
+      await program.autoDraft();
     }
 
-    logger.info('Term and associated lessons deleted', {
-      termId: term._id,
-      programId: term.programId,
-      deletedLessonsCount: lessons.length,
-      programReverted: program && program.status === 'draft',
-      userId: req.user._id,
-      correlationId: req.correlationId
-    });
-
     res.status(204).send();
-
   } catch (error) {
-    next(error);
+    console.error('Delete term error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * POST /api/admin/terms/:id/close
- * Close term (hide lessons)
- */
-const closeTerm = async (req, res, next) => {
+const closeTerm = async (req, res) => {
   try {
     const term = await Term.findById(req.params.id);
     if (!term) {
-      throw createError('Term not found', 404, 'RESOURCE_NOT_FOUND');
+      return res.status(404).json({ message: 'Term not found' });
     }
 
     await term.close();
-
-    logger.info('Term closed', {
-      termId: term._id,
-      userId: req.user._id,
-      correlationId: req.correlationId
-    });
-
     res.json(term);
-
   } catch (error) {
-    next(error);
+    console.error('Close term error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * POST /api/admin/terms/:id/open
- * Open term (show lessons)
- */
-const openTerm = async (req, res, next) => {
+const openTerm = async (req, res) => {
   try {
     const term = await Term.findById(req.params.id);
     if (!term) {
-      throw createError('Term not found', 404, 'RESOURCE_NOT_FOUND');
+      return res.status(404).json({ message: 'Term not found' });
     }
 
     await term.open();
-
-    logger.info('Term opened', {
-      termId: term._id,
-      userId: req.user._id,
-      correlationId: req.correlationId
-    });
-
     res.json(term);
-
   } catch (error) {
-    next(error);
+    console.error('Open term error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 

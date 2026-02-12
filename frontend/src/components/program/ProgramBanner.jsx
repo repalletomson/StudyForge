@@ -1,148 +1,1 @@
-/**
- * Program Banner Component
- * Shows banner image on desktop only, with fallback to default banner
- */
-import { useState, useEffect } from 'react';
-
-const ProgramBanner = ({ program, className = "" }) => {
-  const [imageError, setImageError] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Detect screen size - only show banner on desktop
-  useEffect(() => {
-    const checkScreenSize = () => {
-      setIsMobile(window.innerWidth < 1024); // lg breakpoint
-    };
-
-    checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
-    return () => window.removeEventListener('resize', checkScreenSize);
-  }, []);
-
-  // Don't render banner on mobile
-  if (isMobile) {
-    return null;
-  }
-
-  // Get banner image URL
-  const getBannerImageUrl = () => {
-    if (!program?.assets?.posters?.en) return null;
-    
-    // Prioritize banner, then landscape, then other variants
-    const posterAssets = program.assets.posters.en;
-    return posterAssets.banner || posterAssets.landscape || posterAssets.square || posterAssets.portrait;
-  };
-
-  const bannerUrl = getBannerImageUrl();
-
-  const handleImageLoad = () => {
-    setIsLoading(false);
-    setImageError(false);
-  };
-
-  const handleImageError = () => {
-    setIsLoading(false);
-    setImageError(true);
-  };
-
-  return (
-    <div className={`relative w-full h-48 lg:h-56 xl:h-64 overflow-hidden rounded-xl ${className}`}>
-      {/* Background Image or Gradient */}
-      {bannerUrl && !imageError ? (
-        <>
-          {/* Loading placeholder */}
-          {isLoading && (
-            <div className="absolute inset-0 bg-gradient-to-r from-violet-900/20 via-purple-900/20 to-indigo-900/20 animate-pulse" />
-          )}
-          
-          {/* Banner Image */}
-          <img
-            src={bannerUrl}
-            alt={`${program.title} banner`}
-            className="w-full h-full object-cover"
-            onLoad={handleImageLoad}
-            onError={handleImageError}
-          />
-          
-          {/* Overlay for better text readability */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-black/60" />
-        </>
-      ) : (
-        /* Default gradient banner when no image */
-        <div className="absolute inset-0 bg-gradient-to-r from-violet-900/40 via-purple-900/40 to-indigo-900/40">
-          {/* Subtle pattern overlay */}
-          <div className="absolute inset-0 opacity-10">
-            <svg width="60" height="60" viewBox="0 0 60 60" className="w-full h-full">
-              <defs>
-                <pattern id="banner-pattern" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
-                  <circle cx="30" cy="30" r="1.5" fill="currentColor" />
-                </pattern>
-              </defs>
-              <rect width="60" height="60" fill="url(#banner-pattern)" />
-            </svg>
-          </div>
-        </div>
-      )}
-
-      {/* Content Overlay */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-center px-6 max-w-4xl">
-          <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-white font-heading mb-4 drop-shadow-lg">
-            {program.title}
-          </h1>
-          
-          {program.description && (
-            <p className="text-lg lg:text-xl text-gray-200 max-w-2xl mx-auto drop-shadow-md line-clamp-2">
-              {program.description}
-            </p>
-          )}
-          
-          {/* Program Stats */}
-          <div className="flex items-center justify-center space-x-6 mt-6 text-sm lg:text-base">
-            <div className="flex items-center text-gray-200">
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-              {program.lessonCount || 0} Lessons
-            </div>
-            
-            {program.publishedLessonCount > 0 && (
-              <div className="flex items-center text-green-300">
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {program.publishedLessonCount} Published
-              </div>
-            )}
-            
-            <div className="flex items-center text-gray-200">
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {program.languagePrimary?.toUpperCase()}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Status Badge */}
-      <div className="absolute top-4 right-4">
-        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm ${
-          program.status === 'published' 
-            ? 'bg-green-900/50 text-green-300 border border-green-700/50' 
-            : program.status === 'draft'
-            ? 'bg-gray-900/50 text-gray-300 border border-gray-700/50'
-            : 'bg-yellow-900/50 text-yellow-300 border border-yellow-700/50'
-        }`}>
-          {program.status === 'published' && '🟢'}
-          {program.status === 'draft' && '⚪'}
-          {program.status === 'scheduled' && '🟡'}
-          {program.status}
-        </span>
-      </div>
-    </div>
-  );
-};
-
-export default ProgramBanner;
+import { useState, useEffect } from 'react';const ProgramBanner = ({ program, className = "" }) => {  const [imageError, setImageError] = useState(false);  const [isLoading, setIsLoading] = useState(true);  const [isMobile, setIsMobile] = useState(false);  // Detect screen size - only show banner on desktop  useEffect(() => {    const checkScreenSize = () => {      setIsMobile(window.innerWidth < 1024); // lg breakpoint    };    checkScreenSize();    window.addEventListener('resize', checkScreenSize);    return () => window.removeEventListener('resize', checkScreenSize);  }, []);  // Don't render banner on mobile  if (isMobile) {    return null;  }  // Get banner image URL  const getBannerImageUrl = () => {    if (!program?.assets?.posters?.en) return null;    // Prioritize banner, then landscape, then other variants    const posterAssets = program.assets.posters.en;    return posterAssets.banner || posterAssets.landscape || posterAssets.square || posterAssets.portrait;  };  const bannerUrl = getBannerImageUrl();  const handleImageLoad = () => {    setIsLoading(false);    setImageError(false);  };  const handleImageError = () => {    setIsLoading(false);    setImageError(true);  };  return (    <div className={`relative w-full h-48 lg:h-56 xl:h-64 overflow-hidden rounded-xl ${className}`}>      {}      {bannerUrl && !imageError ? (        <>          {}          {isLoading && (            <div className="absolute inset-0 bg-gradient-to-r from-violet-900/20 via-purple-900/20 to-indigo-900/20 animate-pulse" />          )}          {}          <img            src={bannerUrl}            alt={`${program.title} banner`}            className="w-full h-full object-cover"            onLoad={handleImageLoad}            onError={handleImageError}          />          {}          <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-black/60" />        </>      ) : (        <div className="absolute inset-0 bg-gradient-to-r from-violet-900/40 via-purple-900/40 to-indigo-900/40">          {}          <div className="absolute inset-0 opacity-10">            <svg width="60" height="60" viewBox="0 0 60 60" className="w-full h-full">              <defs>                <pattern id="banner-pattern" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">                  <circle cx="30" cy="30" r="1.5" fill="currentColor" />                </pattern>              </defs>              <rect width="60" height="60" fill="url(#banner-pattern)" />            </svg>          </div>        </div>      )}      {}      <div className="absolute inset-0 flex items-center justify-center">        <div className="text-center px-6 max-w-4xl">          <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-white font-heading mb-4 drop-shadow-lg">            {program.title}          </h1>          {program.description && (            <p className="text-lg lg:text-xl text-gray-200 max-w-2xl mx-auto drop-shadow-md line-clamp-2">              {program.description}            </p>          )}          {}          <div className="flex items-center justify-center space-x-6 mt-6 text-sm lg:text-base">            <div className="flex items-center text-gray-200">              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />              </svg>              {program.lessonCount || 0} Lessons            </div>            {program.publishedLessonCount > 0 && (              <div className="flex items-center text-green-300">                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />                </svg>                {program.publishedLessonCount} Published              </div>            )}            <div className="flex items-center text-gray-200">              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />              </svg>              {program.languagePrimary?.toUpperCase()}            </div>          </div>        </div>      </div>      {}      <div className="absolute top-4 right-4">        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm ${          program.status === 'published'             ? 'bg-green-900/50 text-green-300 border border-green-700/50'             : program.status === 'draft'            ? 'bg-gray-900/50 text-gray-300 border border-gray-700/50'            : 'bg-yellow-900/50 text-yellow-300 border border-yellow-700/50'        }`}>          {program.status === 'published' && '🟢'}          {program.status === 'draft' && '⚪'}          {program.status === 'scheduled' && '🟡'}          {program.status}        </span>      </div>    </div>  );};export default ProgramBanner;

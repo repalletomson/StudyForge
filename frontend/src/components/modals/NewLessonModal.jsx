@@ -1,27 +1,13 @@
-/**
- * New Lesson Modal Component - Redesigned Layout
- */
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { useMutation, useQueryClient } from 'react-query';
-import { FiX, FiPlus, FiPlay, FiBookOpen, FiCalendar, FiUpload, FiArchive, FiImage } from 'react-icons/fi';
-import toast from 'react-hot-toast';
+import { FiX, FiPlus, FiCalendar } from 'react-icons/fi';
+import { showErrorToast, showSuccessToast } from '../../utils/errorHandler';
 import * as lessonApi from '../../services/lessonApi';
-import AssetInput from '../ui/AssetInput';
 
-const NewLessonModal = ({ isOpen, onClose, termId }) => {
+const NewLessonModal = ({ isOpen, onClose, termId, onSuccess }) => {
   const [contentType, setContentType] = useState('video');
-  const [isPaid, setIsPaid] = useState(false);
-  const [publishAction, setPublishAction] = useState('archive'); // Default to archive
-  const [scheduleDate, setScheduleDate] = useState('');
-  const [scheduleTime, setScheduleTime] = useState('');
-  const [assets, setAssets] = useState({
-    portrait: '',
-    landscape: '',
-    banner: ''
-  });
-
-  const queryClient = useQueryClient();
+  const [publishOption, setPublishOption] = useState('draft');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     register,
@@ -35,17 +21,16 @@ const NewLessonModal = ({ isOpen, onClose, termId }) => {
       lessonNumber: 1,
       title: '',
       description: '',
-      contentType: 'video',
       durationMs: '',
       youtubeUrl: '',
       articleContent: '',
-      contentLanguagePrimary: 'en',
-      contentLanguagesAvailable: ['en']
+      portraitThumbnail: '',
+      landscapeThumbnail: '',
+      publishAt: ''
     }
   });
 
-  const watchedContentType = watch('contentType');
-  const watchedYoutubeUrl = watch('youtubeUrl');
+  const watchPublishAt = watch('publishAt');
 
   // Fetch existing lessons to calculate next lesson number
   useEffect(() => {
@@ -74,557 +59,371 @@ const NewLessonModal = ({ isOpen, onClose, termId }) => {
     }
   }, [isOpen, termId, setValue]);
 
-  const createLessonMutation = useMutation(
-    (data) => lessonApi.createLesson(termId, data),
-    {
-      onSuccess: async (newLesson) => {
-        // Save assets if provided
-        const hasAssets = assets.portrait || assets.landscape || assets.banner;
-        if (hasAssets) {
-          try {
-            const assetData = {};
-            if (assets.portrait) assetData.portrait = assets.portrait;
-            if (assets.landscape) assetData.landscape = assets.landscape;
-            if (assets.banner) assetData.banner = assets.banner;
-            
-            await lessonApi.updateLessonAssets(
-              newLesson._id,
-              'en',
-              'thumbnail',
-              assetData
-            );
-          } catch (assetError) {
-            console.error('Failed to save lesson assets:', assetError);
-            toast.error('Lesson created but failed to save assets');
-          }
+  const createLesson = async (data) => {
+    try {
+      setIsSubmitting(true);
+      
+      const lessonData = {
+        title: data.title,
+        description: data.description || '',
+        contentType,
+        lessonNumber: parseInt(data.lessonNumber),
+        isPaid: false,
+        durationMs: data.durationMs ? parseInt(data.durationMs) * 60000 : null,
+        contentLanguagePrimary: 'en',
+        contentLanguagesAvailable: ['en'],
+      };
+
+      // Handle content based on type
+      if (contentType === 'video') {
+        lessonData.contentUrlsByLanguage = data.youtubeUrl ? 
+          { en: data.youtubeUrl } : {};
+        lessonData.articleContentByLanguage = {};
+      } else if (contentType === 'article') {
+        lessonData.articleContentByLanguage = data.articleContent ? 
+          { en: data.articleContent } : {};
+        lessonData.contentUrlsByLanguage = {};
+      }
+
+      const newLesson = await lessonApi.createLesson(termId, lessonData);
+      
+      // Save thumbnails if provided
+      const hasThumbnails = data.portraitThumbnail || data.landscapeThumbnail;
+      if (hasThumbnails) {
+        try {
+          const assetData = {};
+          if (data.portraitThumbnail) assetData.portrait = data.portraitThumbnail;
+          if (data.landscapeThumbnail) assetData.landscape = data.landscapeThumbnail;
+          
+          await lessonApi.updateLessonAssets(
+            newLesson._id,
+            'en',
+            'thumbnail',
+            assetData
+          );
+        } catch (assetError) {
+          console.error('Failed to save lesson assets:', assetError);
         }
+      }
 
-        // Handle publishing actions after creation
-        if (publishAction === 'publish') {
-          publishLessonMutation.mutate(newLesson._id);
-        } else if (publishAction === 'schedule') {
-          if (scheduleDate && scheduleTime) {
-            const publishAt = new Date(`${scheduleDate}T${scheduleTime}`);
-            scheduleLessonMutation.mutate({ lessonId: newLesson._id, publishAt: publishAt.toISOString() });
-          }
-        } else {
-          // Archive action - lesson is created as draft and immediately archived
-          queryClient.invalidateQueries(['lessons']);
-          queryClient.invalidateQueries(['terms']);
-          queryClient.invalidateQueries(['programs']);
-          toast.success('Lesson created successfully!');
-          handleClose();
+      // Handle publish option
+      if (publishOption === 'publish') {
+        await lessonApi.publishLesson(newLesson._id);
+        showSuccessToast('Lesson created and published successfully!');
+      } else if (publishOption === 'schedule') {
+        if (!data.publishAt) {
+          throw new Error('Publish date is required for scheduled lessons');
         }
-      },
-      onError: (error) => {
-        toast.error(error.response?.data?.message || 'Failed to create lesson');
+        await lessonApi.scheduleLesson(newLesson._id, data.publishAt);
+        showSuccessToast('Lesson created and scheduled successfully!');
+      } else {
+        showSuccessToast('Lesson created as draft successfully!');
       }
+      
+      if (onSuccess) {
+        onSuccess();
+      }
+      
+      handleClose();
+    } catch (error) {
+      console.error('Failed to create lesson:', error);
+      showErrorToast(error, 'Failed to create lesson');
+    } finally {
+      setIsSubmitting(false);
     }
-  );
+  };
 
-  const publishLessonMutation = useMutation(
-    (lessonId) => lessonApi.publishLesson(lessonId),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['lessons']);
-        queryClient.invalidateQueries(['terms']);
-        queryClient.invalidateQueries(['programs']);
-        toast.success('Lesson created and published successfully!');
-        handleClose();
-      },
-      onError: (error) => {
-        toast.error(error.response?.data?.message || 'Failed to publish lesson');
-      }
+  const onSubmit = (data) => {
+    if (!data.portraitThumbnail?.trim()) {
+      showErrorToast(new Error('Portrait thumbnail is required'));
+      return;
     }
-  );
+    if (!data.landscapeThumbnail?.trim()) {
+      showErrorToast(new Error('Landscape thumbnail is required'));
+      return;
+    }
 
-  const scheduleLessonMutation = useMutation(
-    ({ lessonId, publishAt }) => lessonApi.scheduleLesson(lessonId, publishAt),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['lessons']);
-        queryClient.invalidateQueries(['terms']);
-        queryClient.invalidateQueries(['programs']);
-        toast.success('Lesson created and scheduled successfully!');
-        handleClose();
-      },
-      onError: (error) => {
-        toast.error(error.response?.data?.message || 'Failed to schedule lesson');
-      }
+    if (publishOption === 'schedule' && !data.publishAt) {
+      showErrorToast(new Error('Publish date is required for scheduled lessons'));
+      return;
     }
-  );
+
+    if (publishOption === 'schedule' && new Date(data.publishAt) <= new Date()) {
+      showErrorToast(new Error('Publish date must be in the future'));
+      return;
+    }
+
+    createLesson(data);
+  };
 
   const handleClose = () => {
     reset();
     setContentType('video');
-    setIsPaid(false);
-    setPublishAction('archive');
-    setScheduleDate('');
-    setScheduleTime('');
-    setAssets({ portrait: '', landscape: '', banner: '' });
+    setPublishOption('draft');
+    setIsSubmitting(false);
     onClose();
-  };
-
-  // Check if required assets are provided
-  const hasRequiredAssets = assets.portrait && assets.portrait.trim() && 
-                           assets.landscape && assets.landscape.trim();
-
-  const onSubmit = (data) => {
-    // Validate required assets
-    if (!assets.portrait || !assets.portrait.trim()) {
-      toast.error('Portrait thumbnail is required');
-      return;
-    }
-    
-    if (!assets.landscape || !assets.landscape.trim()) {
-      toast.error('Landscape thumbnail is required');
-      return;
-    }
-
-    // Validate schedule if needed
-    if (publishAction === 'schedule') {
-      if (!scheduleDate || !scheduleTime) {
-        toast.error('Please select both date and time for scheduling');
-        return;
-      }
-      const publishAt = new Date(`${scheduleDate}T${scheduleTime}`);
-      if (publishAt <= new Date()) {
-        toast.error('Schedule time must be in the future');
-        return;
-      }
-    }
-
-    const lessonData = {
-      lessonNumber: parseInt(data.lessonNumber),
-      title: data.title,
-      description: data.description || '',
-      contentType,
-      durationMs: data.durationMs ? parseInt(data.durationMs) * 60000 : null,
-      isPaid,
-      contentLanguagePrimary: 'en',
-      contentLanguagesAvailable: ['en'],
-      status: 'draft' // Always create as draft first
-    };
-    
-    // Handle content based on type
-    if (contentType === 'video') {
-      lessonData.contentUrlsByLanguage = data.youtubeUrl ? 
-        { en: data.youtubeUrl } : {};
-      lessonData.articleContentByLanguage = {};
-    } else if (contentType === 'article') {
-      lessonData.articleContentByLanguage = data.articleContent ? 
-        { en: data.articleContent } : {};
-      lessonData.contentUrlsByLanguage = {};
-    }
-    
-    createLessonMutation.mutate(lessonData);
-  };
-
-  // Extract YouTube video ID from URL
-  const extractYouTubeId = (url) => {
-    if (!url) return null;
-    const match = url.match(/(?:youtube\.com\/(?:watch\?.*v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-    return match ? match[1] : null;
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-start justify-end min-h-screen">
-        {/* Background overlay */}
-        <div 
-          className="fixed inset-0 transition-opacity bg-black bg-opacity-75 backdrop-blur-sm"
-          onClick={handleClose}
-        />
+    <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="bg-gray-950 rounded-lg shadow-xl w-full max-w-2xl border border-gray-800">
+        <div className="flex items-center justify-between p-4 border-b border-gray-800">
+          <div>
+            <h2 className="text-lg font-bold text-white">Create New Lesson</h2>
+            <p className="text-sm text-gray-400">Add a new lesson to the term</p>
+          </div>
+          <button
+            onClick={handleClose}
+            className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg"
+          >
+            <FiX className="w-5 h-5" />
+          </button>
+        </div>
 
-        {/* Right-side Modal */}
-        <div className="relative w-full max-w-2xl h-screen overflow-y-auto bg-black shadow-2xl border-l border-gray-800 animate-slide-in-right">
-          {/* Header */}
-          <div className="sticky top-0 z-10 bg-black border-b border-gray-800 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-2xl font-bold text-white font-display">
-                  Add New Lesson
-                </h3>
-                <p className="mt-1 text-sm text-gray-400">
-                  Create a new lesson for this term
-                </p>
-              </div>
-              <button
-                onClick={handleClose}
-                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
-              >
-                <FiX className="w-6 h-6" />
-              </button>
+        <form onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm text-gray-300 mb-1">Lesson Number *</label>
+              <input
+                type="number"
+                min="1"
+                className={`w-full px-3 py-2 bg-black border rounded text-white placeholder-gray-500 focus:ring-1 focus:ring-violet-500 focus:border-transparent text-sm ${
+                  errors.lessonNumber ? 'border-red-500' : 'border-gray-700'
+                }`}
+                placeholder="1"
+                {...register('lessonNumber', { 
+                  required: 'Lesson number is required',
+                  min: { value: 1, message: 'Lesson number must be at least 1' }
+                })}
+              />
+              {errors.lessonNumber && (
+                <p className="text-red-400 text-xs mt-1">{errors.lessonNumber.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-300 mb-1">Duration (minutes)</label>
+              <input
+                type="number"
+                min="0"
+                className="w-full px-3 py-2 bg-black border border-gray-700 rounded text-white placeholder-gray-500 focus:ring-1 focus:ring-violet-500 focus:border-transparent text-sm"
+                placeholder="30"
+                {...register('durationMs')}
+              />
             </div>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
-            {/* Basic Information */}
-            <div className="space-y-4">
-              <h4 className="text-lg font-semibold text-white border-b border-gray-800 pb-2">Basic Information</h4>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Lesson Number *</label>
-                  <input
-                    type="number"
-                    min="1"
-                    className={`w-full px-3 py-2 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent ${errors.lessonNumber ? 'border-red-500' : 'border-gray-700'}`}
-                    placeholder="1"
-                    {...register('lessonNumber', { 
-                      required: 'Lesson number is required',
-                      min: { value: 1, message: 'Lesson number must be at least 1' }
-                    })}
-                  />
-                  {errors.lessonNumber && (
-                    <p className="mt-1 text-sm text-red-400">{errors.lessonNumber.message}</p>
-                  )}
-                </div>
+          <div>
+            <label className="block text-sm text-gray-300 mb-1">Title *</label>
+            <input
+              type="text"
+              className={`w-full px-3 py-2 bg-black border rounded text-white placeholder-gray-500 focus:ring-1 focus:ring-violet-500 focus:border-transparent text-sm ${
+                errors.title ? 'border-red-500' : 'border-gray-700'
+              }`}
+              placeholder="Enter lesson title"
+              {...register('title', { required: 'Title is required' })}
+            />
+            {errors.title && (
+              <p className="text-red-400 text-xs mt-1">{errors.title.message}</p>
+            )}
+          </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Duration (minutes)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                    placeholder="30"
-                    {...register('durationMs')}
-                  />
-                </div>
-              </div>
+          <div>
+            <label className="block text-sm text-gray-300 mb-1">Description</label>
+            <textarea
+              rows={2}
+              className="w-full px-3 py-2 bg-black border border-gray-700 rounded text-white placeholder-gray-500 focus:ring-1 focus:ring-violet-500 focus:border-transparent text-sm"
+              placeholder="Enter lesson description"
+              {...register('description')}
+            />
+          </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Lesson Title *</label>
+          <div>
+            <label className="block text-sm text-gray-300 mb-1">Content Type</label>
+            <div className="flex gap-4">
+              <label className="flex items-center text-sm text-gray-300">
                 <input
-                  type="text"
-                  className={`w-full px-3 py-2 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent ${errors.title ? 'border-red-500' : 'border-gray-700'}`}
-                  placeholder="Enter lesson title"
-                  {...register('title', { 
-                    required: 'Lesson title is required',
-                    minLength: { value: 3, message: 'Title must be at least 3 characters' }
+                  type="radio"
+                  value="video"
+                  checked={contentType === 'video'}
+                  onChange={(e) => setContentType(e.target.value)}
+                  className="mr-2 text-violet-600 focus:ring-violet-500"
+                />
+                Video
+              </label>
+              <label className="flex items-center text-sm text-gray-300">
+                <input
+                  type="radio"
+                  value="article"
+                  checked={contentType === 'article'}
+                  onChange={(e) => setContentType(e.target.value)}
+                  className="mr-2 text-violet-600 focus:ring-violet-500"
+                />
+                Article
+              </label>
+            </div>
+          </div>
+
+          {contentType === 'video' && (
+            <div>
+              <label className="block text-sm text-gray-300 mb-1">YouTube URL</label>
+              <input
+                type="url"
+                className="w-full px-3 py-2 bg-black border border-gray-700 rounded text-white placeholder-gray-500 focus:ring-1 focus:ring-violet-500 focus:border-transparent text-sm"
+                placeholder="https://www.youtube.com/watch?v=..."
+                {...register('youtubeUrl')}
+              />
+            </div>
+          )}
+
+          {contentType === 'article' && (
+            <div>
+              <label className="block text-sm text-gray-300 mb-1">Article Content *</label>
+              <textarea
+                rows={4}
+                className="w-full px-3 py-2 bg-black border border-gray-700 rounded text-white placeholder-gray-500 focus:ring-1 focus:ring-violet-500 focus:border-transparent text-sm"
+                placeholder="Enter article content..."
+                {...register('articleContent')}
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm text-gray-300 mb-1">
+                Portrait Thumbnail * <span className="text-gray-500 text-xs">(3:4)</span>
+              </label>
+              <input
+                type="url"
+                className={`w-full px-3 py-2 bg-black border rounded text-white placeholder-gray-500 focus:ring-1 focus:ring-violet-500 focus:border-transparent text-sm ${
+                  errors.portraitThumbnail ? 'border-red-500' : 'border-gray-700'
+                }`}
+                placeholder="https://example.com/portrait.jpg"
+                {...register('portraitThumbnail', { required: 'Portrait thumbnail is required' })}
+              />
+              {errors.portraitThumbnail && (
+                <p className="text-red-400 text-xs mt-1">{errors.portraitThumbnail.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-300 mb-1">
+                Landscape Thumbnail * <span className="text-gray-500 text-xs">(4:3)</span>
+              </label>
+              <input
+                type="url"
+                className={`w-full px-3 py-2 bg-black border rounded text-white placeholder-gray-500 focus:ring-1 focus:ring-violet-500 focus:border-transparent text-sm ${
+                  errors.landscapeThumbnail ? 'border-red-500' : 'border-gray-700'
+                }`}
+                placeholder="https://example.com/landscape.jpg"
+                {...register('landscapeThumbnail', { required: 'Landscape thumbnail is required' })}
+              />
+              {errors.landscapeThumbnail && (
+                <p className="text-red-400 text-xs mt-1">{errors.landscapeThumbnail.message}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Publish Options */}
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">Publish Option</label>
+            <div className="space-y-2">
+              <label className="flex items-center text-sm text-gray-300">
+                <input
+                  type="radio"
+                  value="draft"
+                  checked={publishOption === 'draft'}
+                  onChange={(e) => setPublishOption(e.target.value)}
+                  className="mr-2 text-violet-600 focus:ring-violet-500"
+                />
+                <span className="flex items-center gap-2">
+                  Save as Draft
+                  <span className="text-xs text-gray-500">(can publish later)</span>
+                </span>
+              </label>
+              <label className="flex items-center text-sm text-gray-300">
+                <input
+                  type="radio"
+                  value="publish"
+                  checked={publishOption === 'publish'}
+                  onChange={(e) => setPublishOption(e.target.value)}
+                  className="mr-2 text-violet-600 focus:ring-violet-500"
+                />
+                <span className="flex items-center gap-2">
+                  Publish Now
+                  <span className="text-xs text-gray-500">(if first lesson, auto-publishes program)</span>
+                </span>
+              </label>
+              <label className="flex items-center text-sm text-gray-300">
+                <input
+                  type="radio"
+                  value="schedule"
+                  checked={publishOption === 'schedule'}
+                  onChange={(e) => setPublishOption(e.target.value)}
+                  className="mr-2 text-violet-600 focus:ring-violet-500"
+                />
+                <span className="flex items-center gap-2">
+                  <FiCalendar className="w-3 h-3" />
+                  Schedule for Later
+                  <span className="text-xs text-gray-500">(set publish date)</span>
+                </span>
+              </label>
+            </div>
+
+            {publishOption === 'schedule' && (
+              <div className="mt-3">
+                <label className="block text-sm text-gray-300 mb-1">Publish Date & Time *</label>
+                <input
+                  type="datetime-local"
+                  className={`w-full px-3 py-2 bg-black border rounded text-white focus:ring-1 focus:ring-violet-500 focus:border-transparent text-sm ${
+                    errors.publishAt ? 'border-red-500' : 'border-gray-700'
+                  }`}
+                  min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} // 1 minute from now
+                  {...register('publishAt', { 
+                    required: publishOption === 'schedule' ? 'Publish date is required' : false
                   })}
                 />
-                {errors.title && (
-                  <p className="mt-1 text-sm text-red-400">{errors.title.message}</p>
+                {errors.publishAt && (
+                  <p className="text-red-400 text-xs mt-1">{errors.publishAt.message}</p>
+                )}
+                {watchPublishAt && new Date(watchPublishAt) <= new Date() && (
+                  <p className="text-red-400 text-xs mt-1">Publish date must be in the future</p>
                 )}
               </div>
+            )}
+          </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
-                <textarea
-                  rows={3}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
-                  placeholder="Describe the lesson content..."
-                  {...register('description')}
-                />
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="isPaid"
-                  checked={isPaid}
-                  onChange={(e) => setIsPaid(e.target.checked)}
-                  className="w-4 h-4 text-violet-600 bg-gray-800 border-gray-700 rounded focus:ring-violet-500 focus:ring-2"
-                />
-                <label htmlFor="isPaid" className="ml-3 text-sm text-gray-300">
-                  💰 This is a paid lesson
-                </label>
-              </div>
-            </div>
-
-            {/* Content Type */}
-            <div className="space-y-4">
-              <h4 className="text-lg font-semibold text-white border-b border-gray-800 pb-2">Content Type</h4>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <label className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                  contentType === 'video'
-                    ? 'border-red-500 bg-red-900/20 text-red-400'
-                    : 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/50 text-gray-300'
-                }`}>
-                  <input
-                    type="radio"
-                    name="contentType"
-                    value="video"
-                    checked={contentType === 'video'}
-                    onChange={(e) => {
-                      setContentType(e.target.value);
-                      setValue('contentType', e.target.value);
-                    }}
-                    className="sr-only"
-                  />
-                  <FiPlay className="w-5 h-5 mr-3" />
-                  <div>
-                    <div className="font-medium">Video</div>
-                    <div className="text-xs opacity-75">YouTube video</div>
-                  </div>
-                </label>
-
-                <label className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                  contentType === 'article'
-                    ? 'border-violet-500 bg-violet-900/20 text-violet-400'
-                    : 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/50 text-gray-300'
-                }`}>
-                  <input
-                    type="radio"
-                    name="contentType"
-                    value="article"
-                    checked={contentType === 'article'}
-                    onChange={(e) => {
-                      setContentType(e.target.value);
-                      setValue('contentType', e.target.value);
-                    }}
-                    className="sr-only"
-                  />
-                  <FiBookOpen className="w-5 h-5 mr-3" />
-                  <div>
-                    <div className="font-medium">Article</div>
-                    <div className="text-xs opacity-75">Text content</div>
-                  </div>
-                </label>
-              </div>
-
-              {/* Content Input */}
-              {watchedContentType === 'video' ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    <FiPlay className="inline w-4 h-4 mr-2" />
-                    YouTube Video URL
-                  </label>
-                  <input
-                    type="url"
-                    className={`w-full px-3 py-2 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent ${errors.youtubeUrl ? 'border-red-500' : 'border-gray-700'}`}
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    {...register('youtubeUrl', {
-                      pattern: {
-                        value: /^(https?:\/\/)?(www\.)?(youtube\.com\/(?:watch\?.*v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-                        message: 'Please enter a valid YouTube URL'
-                      }
-                    })}
-                  />
-                  {errors.youtubeUrl && (
-                    <p className="mt-1 text-sm text-red-400">{errors.youtubeUrl.message}</p>
-                  )}
-                  {watchedYoutubeUrl && extractYouTubeId(watchedYoutubeUrl) && (
-                    <div className="mt-3 p-3 bg-gray-900 rounded-lg border border-gray-700">
-                      <p className="text-sm text-green-400 mb-2">✓ Valid YouTube video detected</p>
-                      <div className="aspect-video bg-gray-800 rounded-lg overflow-hidden">
-                        <iframe
-                          src={`https://www.youtube.com/embed/${extractYouTubeId(watchedYoutubeUrl)}`}
-                          className="w-full h-full"
-                          frameBorder="0"
-                          allowFullScreen
-                          title="YouTube Preview"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="px-3 py-1 text-gray-400 border border-gray-700 rounded hover:bg-gray-800 text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-5 py-2 bg-violet-600 text-white rounded hover:bg-violet-700 disabled:opacity-50 flex items-center gap-2 text-sm"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  {publishOption === 'publish' ? 'Publishing...' : 
+                   publishOption === 'schedule' ? 'Scheduling...' : 'Creating...'}
+                </>
               ) : (
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    <FiBookOpen className="inline w-4 h-4 mr-2" />
-                    Article Content
-                  </label>
-                  <textarea
-                    rows={8}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
-                    placeholder="Write your article content here..."
-                    {...register('articleContent')}
-                  />
-                </div>
+                <>
+                  <FiPlus className="w-3 h-3" />
+                  {publishOption === 'publish' ? 'Create & Publish' : 
+                   publishOption === 'schedule' ? 'Create & Schedule' : 'Create Draft'}
+                </>
               )}
-            </div>
-
-            {/* Media Assets */}
-            <div className="space-y-4">
-              <h4 className="text-lg font-semibold text-white border-b border-gray-800 pb-2">
-                <FiImage className="inline w-5 h-5 mr-2" />
-                Lesson Media
-              </h4>
-              
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Portrait Thumbnail <span className="text-red-400">*</span>
-                  </label>
-                  <AssetInput
-                    value={assets.portrait}
-                    onChange={(value) => setAssets(prev => ({ ...prev, portrait: value }))}
-                    placeholder="https://example.com/portrait.jpg"
-                    aspectRatio="3:4"
-                    compact={true}
-                    required={true}
-                    className="w-full"
-                  />
-                  {assets.portrait && (
-                    <div className="mt-1">
-                      <img 
-                        src={assets.portrait} 
-                        alt="Portrait preview" 
-                        className="w-6 h-8 object-cover rounded border border-gray-700"
-                        onError={(e) => e.target.style.display = 'none'}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Landscape Thumbnail <span className="text-red-400">*</span>
-                  </label>
-                  <AssetInput
-                    value={assets.landscape}
-                    onChange={(value) => setAssets(prev => ({ ...prev, landscape: value }))}
-                    placeholder="https://example.com/landscape.jpg"
-                    aspectRatio="16:9"
-                    compact={true}
-                    required={true}
-                    className="w-full"
-                  />
-                  {assets.landscape && (
-                    <div className="mt-1">
-                      <img 
-                        src={assets.landscape} 
-                        alt="Landscape preview" 
-                        className="w-8 h-5 object-cover rounded border border-gray-700"
-                        onError={(e) => e.target.style.display = 'none'}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Banner Image</label>
-                  <AssetInput
-                    value={assets.banner}
-                    onChange={(value) => setAssets(prev => ({ ...prev, banner: value }))}
-                    placeholder="https://example.com/banner.jpg"
-                    aspectRatio="16:9"
-                    compact={true}
-                    className="w-full"
-                  />
-                  {assets.banner && (
-                    <div className="mt-1">
-                      <img 
-                        src={assets.banner} 
-                        alt="Banner preview" 
-                        className="w-8 h-5 object-cover rounded border border-gray-700"
-                        onError={(e) => e.target.style.display = 'none'}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="p-3 bg-amber-900/20 rounded-lg border border-amber-800">
-                <p className="text-sm text-amber-200">
-                  <strong>Required:</strong> Portrait and landscape thumbnails are mandatory.
-                </p>
-              </div>
-            </div>
-
-            {/* Publishing Options */}
-            <div className="space-y-4">
-              <h4 className="text-lg font-semibold text-white border-b border-gray-800 pb-2">Publishing</h4>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Action</label>
-                <select
-                  value={publishAction}
-                  onChange={(e) => setPublishAction(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                >
-                  <option value="archive">Archive (Save as draft)</option>
-                  <option value="publish">Publish Now</option>
-                  <option value="schedule">Schedule for Later</option>
-                </select>
-              </div>
-
-              {publishAction === 'schedule' && (
-                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Date</label>
-                    <input
-                      type="date"
-                      value={scheduleDate}
-                      onChange={(e) => setScheduleDate(e.target.value)}
-                      min={new Date().toISOString().split('T')[0]}
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Time</label>
-                    <input
-                      type="time"
-                      value={scheduleTime}
-                      onChange={(e) => setScheduleTime(e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="sticky bottom-0 bg-black border-t border-gray-800 pt-6 -mx-6 px-6 pb-6">
-              <div className="flex items-center justify-end space-x-4">
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="inline-flex items-center px-4 py-2 border border-gray-700 text-sm font-medium rounded-md text-gray-300 bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
-                  disabled={createLessonMutation.isLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                    publishAction === 'publish' 
-                      ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' 
-                      : publishAction === 'schedule'
-                      ? 'bg-violet-600 hover:bg-violet-700 focus:ring-violet-500'
-                      : 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-500'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  disabled={createLessonMutation.isLoading || publishLessonMutation.isLoading || scheduleLessonMutation.isLoading || !hasRequiredAssets}
-                >
-                  {(createLessonMutation.isLoading || publishLessonMutation.isLoading || scheduleLessonMutation.isLoading) ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      {publishAction === 'publish' ? 'Publishing...' : publishAction === 'schedule' ? 'Scheduling...' : 'Creating...'}
-                    </>
-                  ) : (
-                    <>
-                      {publishAction === 'publish' ? (
-                        <>
-                          <FiUpload className="w-4 h-4 mr-2" />
-                          {hasRequiredAssets ? 'Publish Now' : 'Add Required Assets'}
-                        </>
-                      ) : publishAction === 'schedule' ? (
-                        <>
-                          <FiCalendar className="w-4 h-4 mr-2" />
-                          {hasRequiredAssets ? 'Schedule Lesson' : 'Add Required Assets'}
-                        </>
-                      ) : (
-                        <>
-                          <FiArchive className="w-4 h-4 mr-2" />
-                          {hasRequiredAssets ? 'Create Lesson' : 'Add Required Assets'}
-                        </>
-                      )}
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

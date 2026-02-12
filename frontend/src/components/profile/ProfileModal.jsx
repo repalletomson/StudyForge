@@ -1,11 +1,7 @@
-/**
- * Profile Modal Component
- */
 import { useState, useEffect } from 'react';
-import { useMutation, useQueryClient } from 'react-query';
 import { FiX, FiUser, FiMail, FiPhone, FiCamera, FiSave } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
-import toast from 'react-hot-toast';
+import { showErrorToast, showSuccessToast } from '../../utils/errorHandler';
 
 const ProfileModal = ({ isOpen, onClose }) => {
   const { user, updateUser } = useAuth();
@@ -18,7 +14,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
     avatar: ''
   });
   const [errors, setErrors] = useState({});
-  const queryClient = useQueryClient();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -33,8 +29,9 @@ const ProfileModal = ({ isOpen, onClose }) => {
     }
   }, [user]);
 
-  const updateProfileMutation = useMutation(
-    async (profileData) => {
+  const updateProfile = async (profileData) => {
+    try {
+      setIsSubmitting(true);
       const response = await fetch('/api/auth/profile', {
         method: 'PUT',
         headers: {
@@ -49,20 +46,17 @@ const ProfileModal = ({ isOpen, onClose }) => {
         throw new Error(error.message || 'Failed to update profile');
       }
 
-      return response.json();
-    },
-    {
-      onSuccess: (data) => {
-        updateUser(data.user);
-        queryClient.invalidateQueries('user');
-        toast.success('Profile updated successfully!');
-        onClose();
-      },
-      onError: (error) => {
-        toast.error(error.message || 'Failed to update profile');
-      }
+      const data = await response.json();
+      updateUser(data.user);
+      showSuccessToast('Profile updated successfully!');
+      onClose();
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      showErrorToast(error, 'Failed to update profile');
+    } finally {
+      setIsSubmitting(false);
     }
-  );
+  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -87,12 +81,10 @@ const ProfileModal = ({ isOpen, onClose }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
     if (!validateForm()) {
       return;
     }
-
-    updateProfileMutation.mutate(formData);
+    updateProfile(formData);
   };
 
   const handleChange = (e) => {
@@ -101,7 +93,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
       ...prev,
       [name]: value
     }));
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -145,7 +137,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
           className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 backdrop-blur-sm"
           onClick={onClose}
         />
-        
+
         <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-2xl rounded-2xl animate-slide-up">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
@@ -170,7 +162,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Avatar Section */}
+            {/* Avatar */}
             <div className="flex flex-col items-center">
               <div className="relative">
                 <img
@@ -202,8 +194,8 @@ const ProfileModal = ({ isOpen, onClose }) => {
                   value={formData.firstName}
                   onChange={handleChange}
                   className={`form-input ${errors.firstName ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-                  placeholder="John"
-                  disabled={updateProfileMutation.isLoading}
+                  placeholder="Tomson"
+                  disabled={isSubmitting}
                 />
                 {errors.firstName && (
                   <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
@@ -220,8 +212,8 @@ const ProfileModal = ({ isOpen, onClose }) => {
                   value={formData.lastName}
                   onChange={handleChange}
                   className="form-input"
-                  placeholder="Doe"
-                  disabled={updateProfileMutation.isLoading}
+                  placeholder="Repalle"
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
@@ -237,8 +229,8 @@ const ProfileModal = ({ isOpen, onClose }) => {
                 value={formData.email}
                 onChange={handleChange}
                 className={`form-input ${errors.email ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-                placeholder="john@example.com"
-                disabled={updateProfileMutation.isLoading}
+                placeholder="tomson@email.com"
+                disabled={isSubmitting}
               />
               {errors.email && (
                 <p className="mt-1 text-sm text-red-600">{errors.email}</p>
@@ -257,7 +249,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
                 onChange={handleChange}
                 className={`form-input ${errors.phone ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                 placeholder="+1 (555) 123-4567"
-                disabled={updateProfileMutation.isLoading}
+                disabled={isSubmitting}
               />
               {errors.phone && (
                 <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
@@ -276,7 +268,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
                 className="form-input"
                 placeholder="Tell us about yourself..."
                 maxLength={500}
-                disabled={updateProfileMutation.isLoading}
+                disabled={isSubmitting}
               />
               <p className="text-xs text-gray-500 mt-1">
                 {formData.bio.length}/500 characters
@@ -288,16 +280,16 @@ const ProfileModal = ({ isOpen, onClose }) => {
                 type="button"
                 onClick={onClose}
                 className="btn-secondary"
-                disabled={updateProfileMutation.isLoading}
+                disabled={isSubmitting}
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 className="btn-primary"
-                disabled={updateProfileMutation.isLoading}
+                disabled={isSubmitting}
               >
-                {updateProfileMutation.isLoading ? (
+                {isSubmitting ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     Saving...

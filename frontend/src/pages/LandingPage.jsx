@@ -11,14 +11,12 @@ import {
   Code,
   Layers
 } from 'lucide-react';
-
 export default function LandingPage() {
   const fadeIn = {
     initial: { opacity: 0, y: 20 },
     animate: { opacity: 1, y: 0 },
     transition: { duration: 0.5 }
   };
-
   const stagger = {
     animate: {
       transition: {
@@ -26,10 +24,9 @@ export default function LandingPage() {
       }
     }
   };
-
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-purple-600/20 selection:text-purple-400">
-      {/* Navigation */}
+      {}
       <nav className="fixed top-0 w-full z-50 border-b border-white/10 bg-black/80 backdrop-blur-md">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -38,7 +35,6 @@ export default function LandingPage() {
             </div>
             <span className="text-xl font-bold tracking-tight">StudyForge</span>
           </div>
-          
           <div className="flex items-center gap-4">
             <Link to="/login">
               <button className="hidden md:inline-flex px-4 py-2 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 rounded-md transition-colors">
@@ -53,8 +49,7 @@ export default function LandingPage() {
           </div>
         </div>
       </nav>
-
-      {/* Hero Section */}
+      {}
       <section className="relative pt-32 pb-20 overflow-hidden">
         <div className="container mx-auto px-6 relative z-10">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -71,19 +66,16 @@ export default function LandingPage() {
                 </span>
                 System Online v2.0
               </motion.div>
-              
               <motion.h1 variants={fadeIn} className="text-5xl md:text-7xl font-bold leading-[1.1] tracking-tight">
                 The Headless CMS <br/>
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/50">
                   for Education
                 </span>
               </motion.h1>
-              
               <motion.p variants={fadeIn} className="text-xl text-gray-400 max-w-xl leading-relaxed">
                 Manage Programs, Terms, and Lessons with a headless CMS built for scale. 
                 Schedule content, manage assets, and deliver via high-performance API.
               </motion.p>
-              
               <motion.div variants={fadeIn} className="flex flex-wrap gap-4 pt-4">
                 <Link to="/signup">
                   <button className="h-14 px-8 text-lg bg-purple-600 hover:bg-purple-700 text-white border-l-4 border-white/20 transition-colors flex items-center gap-2">
@@ -94,7 +86,6 @@ export default function LandingPage() {
                   View API Docs
                 </button>
               </motion.div>
-
               <motion.div variants={fadeIn} className="pt-8 flex items-center gap-8 text-sm text-gray-400 font-mono">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-purple-600" />
@@ -104,13 +95,9 @@ export default function LandingPage() {
                   <CheckCircle className="w-4 h-4 text-purple-600" />
                   <span>Auto-Scaling</span>
                 </div>
-                {/* <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-purple-600" />
-                  <span>Type-Safe</span>
-                </div> */}
+                {}
               </motion.div>
             </motion.div>
-
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -123,7 +110,7 @@ export default function LandingPage() {
                 alt="Abstract Network" 
                 className="relative z-10 w-full h-auto rounded-lg border border-white/10 shadow-2xl shadow-purple-600/20"
               />
-              {/* Floating UI Elements */}
+              {}
               <div className="absolute -left-8 top-1/4 p-4 bg-black/80 backdrop-blur border border-white/10 rounded-lg shadow-xl z-20 font-mono text-xs">
                 <div className="text-gray-400 mb-1">STATUS</div>
                 <div className="text-green-400">● RUNNING</div>
@@ -135,12 +122,10 @@ export default function LandingPage() {
             </motion.div>
           </div>
         </div>
-        
-        {/* Background Grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none z-0"></div>
+        {}
+         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none z-0"></div>
       </section>
-
-      {/* Features Grid */}
+      {}
       <section className="py-24 border-t border-white/10 bg-black/50">
         <div className="container mx-auto px-6">
           <div className="mb-16">
@@ -149,9 +134,9 @@ export default function LandingPage() {
               A complete ecosystem for managing educational content structures.
             </p>
           </div>
-
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
+             
+            { [
               {
                 icon: <Layout className="w-8 h-8" />,
                 title: "Program Management",
@@ -198,21 +183,19 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
-      {/* Code Snippet Section */}
+      {}
       <section className="py-24 border-t border-white/10 relative overflow-hidden">
         <div className="container mx-auto px-6 grid lg:grid-cols-2 gap-16 items-center">
           <div>
             <h2 className="text-3xl md:text-5xl font-bold mb-6">Developer First API</h2>
             <p className="text-gray-400 text-lg mb-8">
-              Build your frontend with a type-safe, documented API. Retrieve programs, filter by topic, and consume structured lesson content.
+              Build your frontend with a type-safe, documented API. Retrieve programs, filter by topic, and consume  structured lesson content.
             </p>
-            <button className="h-12 px-6 text-lg border border-white/20 hover:bg-white/10 text-white transition-colors">
-              Read Documentation
+            <button className="h-12 px-6 text-lg border  border-white/20  hover:bg-white/10 text-white transition-colors">
+              Read Documentation  
             </button>
           </div>
-          
-          <div className="relative rounded-lg border border-white/10 bg-black shadow-2xl font-mono text-sm overflow-hidden">
+          <div className="relative rounded-lg border  border-white/10 bg-black shadow-2xl font-mono text-sm overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 bg-white/5">
               <div className="w-3 h-3 rounded-full bg-red-500/50" />
               <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
@@ -220,6 +203,7 @@ export default function LandingPage() {
               <div className="ml-2 text-xs text-gray-400">GET /catalog/programs</div>
             </div>
             <div className="p-6 overflow-x-auto text-blue-100">
+
               <pre>
 {`{
   "data": [
@@ -241,25 +225,24 @@ export default function LandingPage() {
 }`}
               </pre>
             </div>
-            <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/20 to-transparent" />
+            <div className="absolute inset-0  pointer-events-none  bg-gradient-to-t from-black/20 to-transparent" />
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="py-12 border-t border-white/10 bg-black text-sm">
+      {}
+      <footer className="py-12 border-t border-white/10  bg-black text-sm">
         <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Layers className="text-purple-600 w-5 h-5" />
+          <div className="flex items-center  gap-2">
+            <Layers className="text-purple-600  w-5 h-5" />
             <span className="font-bold tracking-tight text-lg">StudyForge</span>
           </div>
           <div className="text-gray-400">
             © 2026 StudyForge Inc. All rights reserved.
           </div>
           <div className="flex gap-6 text-gray-400">
-            <a href="#" className="hover:text-purple-400 transition-colors">Privacy</a>
-            <a href="#" className="hover:text-purple-400 transition-colors">Terms</a>
-            <a href="#" className="hover:text-purple-400 transition-colors">Twitter</a>
+            <a href="#" className="hover:text-purple-400  transition-colors">Privacy</a>
+            <a href="#" className="hover:text-purple-400  transition-colors">Terms</a>
+            <a href="#" className="hover:text-purple-400  transition-colors">Twitter</a>
           </div>
         </div>
       </footer>

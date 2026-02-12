@@ -1,16 +1,5 @@
-/**
- * Global error handling middleware
- */
 const logger = require('../config/logger');
 
-/**
- * Error response format
- * @param {string} code - Error code
- * @param {string} message - Error message
- * @param {Object} details - Additional error details
- * @param {string} requestId - Request correlation ID
- * @returns {Object}
- */
 const createErrorResponse = (code, message, details = null, requestId = null) => ({
   code,
   message,
@@ -19,13 +8,6 @@ const createErrorResponse = (code, message, details = null, requestId = null) =>
   requestId
 });
 
-/**
- * Global error handler middleware
- * @param {Error} err - Error object
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next function
- */
 const errorHandler = (err, req, res, next) => {
   const requestId = req.correlationId || 'unknown';
   
