@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
@@ -17,21 +16,20 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: false, // Disable sourcemaps in production for smaller bundle
+    sourcemap: false,
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true, // Remove console.logs in production
+        drop_console: true,
         drop_debugger: true
       }
     },
     rollupOptions: {
       output: {
         manualChunks: {
-          // Separate vendor chunks for better caching
           vendor: ['react', 'react-dom'],
           router: ['react-router-dom'],
-          ui: ['react-hook-form', 'react-query', 'react-hot-toast'],
+          ui: ['react-hook-form', 'react-hot-toast'],
           icons: ['react-icons']
         }
       }
