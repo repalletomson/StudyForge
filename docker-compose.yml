@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # Backend API Service (with integrated worker)
   backend:
     build:
       context: ./backend
@@ -18,17 +17,10 @@ services:
       - WORKER_CRON=* * * * *
     volumes:
       - backend_uploads:/app/uploads
-    healthcheck:
-      test: ["CMD", "node", "healthcheck.js"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
     restart: unless-stopped
     networks:
       - studyforge-network
 
-  # Frontend React Application
   frontend:
     build:
       context: ./frontend
@@ -40,18 +32,15 @@ services:
       - NODE_ENV=production
       - VITE_API_URL=http://localhost:3001
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
     restart: unless-stopped
     networks:
       - studyforge-network
 
-# Named volumes for data persistence
 volumes:
   backend_uploads:
     driver: local
 
-# Network for service communication
 networks:
   studyforge-network:
     driver: bridge

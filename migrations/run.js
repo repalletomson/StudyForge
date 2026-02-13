@@ -1,21 +1,10 @@
-/**
- * Migration Runner
- * Executes database migrations in order and tracks completion
- */
-
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const fs = require('fs');
 const path = require('path');
 
-/**
- * Migration tracking collection
- */
 const MIGRATIONS_COLLECTION = 'migrations';
 
-/**
- * Connect to MongoDB
- */
 const connectToDatabase = async () => {
   const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/cms_db';
   const client = new MongoClient(mongoUri);
@@ -30,9 +19,6 @@ const connectToDatabase = async () => {
   }
 };
 
-/**
- * Get completed migrations from database
- */
 const getCompletedMigrations = async (db) => {
   try {
     const migrations = await db.collection(MIGRATIONS_COLLECTION)
@@ -40,14 +26,10 @@ const getCompletedMigrations = async (db) => {
       .toArray();
     return migrations.map(m => m.name);
   } catch (error) {
-    // Collection doesn't exist yet, return empty array
     return [];
   }
 };
 
-/**
- * Mark migration as completed
- */
 const markMigrationCompleted = async (db, migrationName, description) => {
   await db.collection(MIGRATIONS_COLLECTION).insertOne({
     name: migrationName,
@@ -56,9 +38,6 @@ const markMigrationCompleted = async (db, migrationName, description) => {
   });
 };
 
-/**
- * Get all migration files
- */
 const getMigrationFiles = () => {
   const migrationsDir = __dirname;
   const files = fs.readdirSync(migrationsDir)
@@ -68,9 +47,6 @@ const getMigrationFiles = () => {
   return files;
 };
 
-/**
- * Run a single migration
- */
 const runMigration = async (db, migrationFile) => {
   const migrationPath = path.join(__dirname, migrationFile);
   const migration = require(migrationPath);
@@ -88,24 +64,18 @@ const runMigration = async (db, migrationFile) => {
   }
 };
 
-/**
- * Main migration runner
- */
 const runMigrations = async () => {
   const { client, db } = await connectToDatabase();
   
   try {
     console.log('🚀 Starting database migrations...\n');
     
-    // Get completed migrations
     const completedMigrations = await getCompletedMigrations(db);
     console.log(`📋 Found ${completedMigrations.length} completed migrations`);
     
-    // Get all migration files
     const migrationFiles = getMigrationFiles();
-    console.log(`📁 Found ${migrationFiles.length} migration files`);
+    console.log(`� Found ${migrationFiles.length} migration files`);
     
-    // Filter out completed migrations
     const pendingMigrations = migrationFiles.filter(file => 
       !completedMigrations.includes(file)
     );
@@ -117,16 +87,14 @@ const runMigrations = async () => {
     
     console.log(`⏳ Running ${pendingMigrations.length} pending migrations...\n`);
     
-    // Run pending migrations
     for (const migrationFile of pendingMigrations) {
       await runMigration(db, migrationFile);
     }
     
     console.log('\n🎉 All migrations completed successfully!');
     
-    // Show migration status
     const allCompletedMigrations = await getCompletedMigrations(db);
-    console.log('\n📊 Migration Status:');
+    console.log('\n� Migration Status:');
     for (const migration of allCompletedMigrations) {
       console.log(`   ✅ ${migration}`);
     }
@@ -136,13 +104,10 @@ const runMigrations = async () => {
     process.exit(1);
   } finally {
     await client.close();
-    console.log('\n🔌 Database connection closed');
+    console.log('\n� Database connection closed');
   }
 };
 
-/**
- * Show migration status without running
- */
 const showMigrationStatus = async () => {
   const { client, db } = await connectToDatabase();
   
@@ -165,7 +130,6 @@ const showMigrationStatus = async () => {
   }
 };
 
-// Command line interface
 const command = process.argv[2];
 
 if (command === 'status') {

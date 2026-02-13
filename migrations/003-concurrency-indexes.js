@@ -37,6 +37,7 @@ const createConcurrencyIndexes = async (db) => {
   });
   
   await createIndex('programs', { status: 1, publishedAt: -1 }, { 
+    name: 'status_publishedAt_partial_idx',
     partialFilterExpression: { status: { $in: ['published', 'scheduled'] } } 
   });
   console.log('✓ Partial indexes for active records');

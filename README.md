@@ -118,21 +118,35 @@ cd worker && npm run dev
 
 ## 🗄️ Database Operations
 
-### How Migrations Run
-```bash
-# Run database migrations
-cd backend
-npm run migrate
+### Database Migrations
 
-# Or using Docker
-docker-compose exec backend npm run migrate
+Migrations ensure your database has the proper indexes and schema updates for optimal performance.
+
+#### Running Migrations
+
+```bash
+# From project root
+node migrations/run.js
+
+# From backend directory
+cd backend && npm run migrate
+
+# Check migration status
+node migrations/run.js status
+
+# Using Docker (when container is running)
+docker exec studyforge-backend npm run migrate
 ```
 
-Migrations handle:
-- Schema updates
-- Index creation
-- Data transformations
-- Version tracking
+#### What Migrations Do
+
+- **001-create-indexes.js**: Basic indexes for core collections (users, programs, lessons, terms)
+- **002-assets-indexes.js**: Performance indexes for asset-related queries
+- **003-concurrency-indexes.js**: Indexes for concurrency control and optimistic locking
+
+#### Migration Status
+
+Migrations are tracked automatically. Each migration runs only once and is recorded in the `migrations` collection.
 
 ### How Seed Runs
 ```bash
