@@ -326,7 +326,6 @@ const NewLessonModal = ({ isOpen, onClose, termId, onSuccess }) => {
             </div>
           </div>
 
-          {/* Publish Options */}
           <div>
             <label className="block text-sm text-gray-300 mb-2">Publish Option</label>
             <div className="space-y-2">

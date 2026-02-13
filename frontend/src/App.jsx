@@ -3,7 +3,6 @@ import { Suspense, lazy } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 
-// Lazy load pages
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const SignupPage = lazy(() => import('./pages/SignupPage'));
@@ -15,14 +14,12 @@ const ProgramDetailPage = lazy(() => import('./pages/ProgramDetailPage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
 const PublishingPage = lazy(() => import('./pages/PublishingPage'));
 
-// Loading component
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-950">
     <LoadingSpinner size="lg" />
   </div>
 );
 
-// Protected route wrapper
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
 
@@ -32,7 +29,6 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// Public route wrapper (redirect if logged in)
 const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth();
 
@@ -46,12 +42,10 @@ function App() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
-        {/* Public routes */}
         <Route path="/" element={<PublicRoute><LandingPage /></PublicRoute>} />
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
 
-        {/* Protected routes */}
         <Route
           path="/dashboard"
           element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}
@@ -65,12 +59,10 @@ function App() {
           <Route path="users" element={<UsersPage />} />
         </Route>
 
-        {/* Redirects */}
         <Route path="/programs" element={<Navigate to="/dashboard/programs" replace />} />
         <Route path="/publishing" element={<Navigate to="/dashboard/publishing" replace />} />
         <Route path="/users" element={<Navigate to="/dashboard/users" replace />} />
         
-        {/* 404 */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

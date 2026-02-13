@@ -86,14 +86,12 @@ const NewProgramPage = () => {
   return (
     <div className="min-h-screen ">
       <div className="max-w-2xl mx-auto p-4">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/dashboard/programs')}
               className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg"
             >
-              {/* <FiArrowLeft className="w-5 h-5" /> */}
             </button>
             <div>
               <h1 className="text-xl font-bold text-white">Create New Program</h1>
@@ -108,7 +106,6 @@ const NewProgramPage = () => {
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label className="block text-sm  mb-1">
@@ -212,7 +209,6 @@ const NewProgramPage = () => {
             </div>
           </div>
 
-          {/* Create Button */}
           <div className="flex justify-end pt-3">
             <button
               type="submit"

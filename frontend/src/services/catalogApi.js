@@ -37,7 +37,6 @@ class CatalogApiService {
   }
   async getProgramLessons(programId, params = {}) {
     const program = await this.getProgram(programId);
-    // Extract all lessons from all terms
     const lessons = [];
     program.terms?.forEach(term => {
       term.lessons?.forEach(lesson => {
@@ -146,10 +145,10 @@ class CatalogApiService {
     };
   }
 }
-// Create singleton instance
+
 const catalogApi = new CatalogApiService();
 export default catalogApi;
-// Export individual methods for convenience
+
 export const {
   getPrograms,
   getProgram,

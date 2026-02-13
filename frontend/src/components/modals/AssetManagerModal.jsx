@@ -9,20 +9,11 @@ const AssetManagerModal = ({ isOpen, onClose, entity, entityType, onAssetUpdate 
   const assetType = entityType === 'program' ? 'posters' : 'thumbnails';
   const availableLanguages = entity?.languagesAvailable || ['en'];
 
-  // Debug: Log entity data when modal opens
   useEffect(() => {
-    if (isOpen && entity) {
-      console.log('AssetManagerModal opened with entity:', {
-        id: entity._id,
-        title: entity.title,
-        assets: entity.assets,
-        selectedLanguage,
-        assetsStructure: entity.assets ? JSON.stringify(entity.assets, null, 2) : 'No assets'
-      });
-    }
+    // Modal opened - could add initialization logic here if needed
   }, [isOpen, entity, selectedLanguage]);
+  
   const handleAssetUpload = async (language, variant, result) => {
-    console.log('Asset uploaded:', { language, variant, result });
     // Show immediate success feedback
     toast.success(`${variant} ${assetType} uploaded for ${language.toUpperCase()}`);
     // Force refresh of the entity data

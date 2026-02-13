@@ -39,7 +39,7 @@ const LoginPage = () => {
     try {
       await login({ email, password });
     } catch (error) {
-       console.log("Login Failed")
+      // Login error is handled by AuthContext
     }
   };
 

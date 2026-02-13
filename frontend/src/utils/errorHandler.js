@@ -1,8 +1,5 @@
 import toast from 'react-hot-toast';
 
-/**
- * Extract error message from various error formats
- */
 export const extractErrorMessage = (error) => {
   if (typeof error === 'string') {
     return error;
@@ -19,25 +16,16 @@ export const extractErrorMessage = (error) => {
   return 'An unexpected error occurred';
 };
 
-/**
- * Show error toast with consistent formatting
- */
 export const showErrorToast = (error, fallbackMessage = 'An error occurred') => {
   const message = extractErrorMessage(error) || fallbackMessage;
   toast.error(message);
   return message;
 };
 
-/**
- * Show success toast
- */
 export const showSuccessToast = (message) => {
   toast.success(message);
 };
 
-/**
- * Validate YouTube URL
- */
 export const validateYouTubeUrl = (url) => {
   if (!url) return { isValid: false, error: 'URL is required' };
   
@@ -51,9 +39,6 @@ export const validateYouTubeUrl = (url) => {
   return { isValid: true, videoId: match[4] };
 };
 
-/**
- * Handle async operations with error handling
- */
 export const handleAsyncOperation = async (operation, options = {}) => {
   const { 
     loadingMessage, 
@@ -95,9 +80,6 @@ export const handleAsyncOperation = async (operation, options = {}) => {
   }
 };
 
-/**
- * Retry an async operation with exponential backoff
- */
 export const retryOperation = async (operation, maxRetries = 3, baseDelay = 1000) => {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {

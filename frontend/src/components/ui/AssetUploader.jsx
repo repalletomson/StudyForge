@@ -16,7 +16,6 @@ const AssetUploader = ({
   const [preview, setPreview] = useState(currentUrl);
   // Update preview when currentUrl changes (from parent component refresh)
   useEffect(() => {
-    console.log(`AssetUploader ${variant} - currentUrl changed:`, currentUrl);
     setPreview(currentUrl);
   }, [currentUrl, variant]);
   const onDrop = useCallback(async (acceptedFiles) => {
@@ -57,8 +56,6 @@ const AssetUploader = ({
         throw new Error(`Failed to upload file: ${response.status}`);
       }
       const savedAsset = await response.json();
-      console.log('Asset saved successfully:', savedAsset);
-      // Update preview with the server URL
       const serverUrl = `${apiUrl}/api/assets/${savedAsset.fileId}`;
       setPreview(serverUrl);
       // Notify parent component

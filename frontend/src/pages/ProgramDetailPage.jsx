@@ -307,7 +307,6 @@ const ProgramDetailPage = () => {
   return (
     <div className="min-h-screen bg-gray-950">
       <div className="max-w-6xl mx-auto p-6 space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <button
             onClick={() => navigate('/dashboard/programs')}
@@ -339,7 +338,6 @@ const ProgramDetailPage = () => {
           </div>
         </div>
 
-        {/* Program Info */}
         <div className="bg-gray-900 rounded-lg p-6">
           <div className="flex justify-between items-start">
             <div className="flex-1">
@@ -347,7 +345,6 @@ const ProgramDetailPage = () => {
               <p className="text-gray-400 text-lg mb-4">{program.description}</p>
             </div>
             
-            {/* Asset Management */}
             <div className="flex gap-4">
               <div>
                 <label className="block text-sm text-gray-300 mb-1">Portrait Poster</label>
@@ -373,7 +370,6 @@ const ProgramDetailPage = () => {
           </div>
         </div>
 
-        {/* Add/}
         {hasPermission('write') && (
           <div className="flex justify-end">
             <button
@@ -386,7 +382,6 @@ const ProgramDetailPage = () => {
           </div>
         )}
 
-        {/* Terms List */}
         <div className="space-y-4">
           {terms.map((term) => (
             <div key={term._id} className="bg-gray-900 rounded-lg p-4">
@@ -411,7 +406,6 @@ const ProgramDetailPage = () => {
                 )}
               </div>
 
-              {/* Lessons */}
               <div className="space-y-2">
                 {lessons
                   .filter(lesson => lesson.termId === term._id)
@@ -422,7 +416,6 @@ const ProgramDetailPage = () => {
                       className="flex items-center justify-between p-3 bg-gray-800 rounded-lg"
                     >
                       <div className="flex items-center gap-3">
-                        {/* Lesson Thumbnail */}
                         <div className="w-16 h-10 bg-gray-700 rounded overflow-hidden">
                           {lesson.assets?.thumbnails?.[lesson.contentLanguagePrimary]?.portrait && (
                             <img
@@ -551,7 +544,6 @@ const ProgramDetailPage = () => {
         </div>
       </div>
 
-      {/* Modals */}
       {isEditModalOpen && (
         <EditProgramModal
           isOpen={isEditModalOpen}

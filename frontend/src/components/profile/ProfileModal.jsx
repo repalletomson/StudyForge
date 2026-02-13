@@ -162,7 +162,6 @@ const ProfileModal = ({ isOpen, onClose }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Avatar */}
             <div className="flex flex-col items-center">
               <div className="relative">
                 <img

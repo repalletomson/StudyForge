@@ -358,7 +358,6 @@ const EditLessonModal = ({ isOpen, onClose, lesson, onSuccess }) => {
             </div>
           </div>
 
-          {/* Publish Options */}
           <div>
             <label className="block text-sm text-gray-300 mb-2">Action</label>
             <div className="space-y-2">
