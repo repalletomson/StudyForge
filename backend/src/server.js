@@ -56,9 +56,12 @@ async function startServer() {
     const allowedOrigins = [
       'http://localhost:3000',
       'http://localhost:3001', 
-      'https://studyforge-gwqy.onrender.com',
-      'https://study-forge-git-main-sidharthamahendra-gmailcoms-projects.vercel.app',
-      'https://study-forge-gold.vercel.app'
+      'https://studyforge-gwqy.onrender.com'
+    ];
+    
+    const allowedPatterns = [
+      /^https:\/\/study-forge.*\.vercel\.app$/,
+      /^https:\/\/.*sidharthamahendra.*\.vercel\.app$/
     ];
     
     if (process.env.CORS_ORIGIN && !allowedOrigins.includes(process.env.CORS_ORIGIN)) {
@@ -66,7 +69,19 @@ async function startServer() {
     }
     
     app.use(cors({
-      origin: allowedOrigins,
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        
+        if (allowedPatterns.some(pattern => pattern.test(origin))) {
+          return callback(null, true);
+        }
+        
+        callback(new Error('Not allowed by CORS'));
+      },
       credentials: true
     }));
 
