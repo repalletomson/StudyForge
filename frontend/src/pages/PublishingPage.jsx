@@ -13,42 +13,18 @@ const PublishingPage = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const programsData = await programApi.getPrograms({});
-      const programs = programsData.programs || [];
-      setPrograms(programs);
-
-      const lessons = [];
-      for (const program of programs) {
-        try {
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-          const termsResponse = await fetch(`${apiUrl}/api/admin/programs/${program._id}/terms`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          });
-          
-          if (termsResponse.ok) {
-            const termsData = await termsResponse.json();
-            for (const term of termsData.terms) {
-              const lessonsResponse = await fetch(`${apiUrl}/api/admin/terms/${term._id}/lessons`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-              });
-              
-              if (lessonsResponse.ok) {
-                const lessonsData = await lessonsResponse.json();
-                lessons.push(...lessonsData.lessons.map(l => ({
-                  ...l,
-                  programTitle: program.title,
-                  termTitle: term.title,
-                  programId: program._id,
-                  termId: term._id
-                })));
-              }
-            }
-          }
-        } catch (error) {
-          console.error(`Error loading lessons for program ${program._id}:`, error);
-        }
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/admin/programs/publishing-data`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPrograms(data.programs || []);
+        setAllLessons(data.lessons || []);
+      } else {
+        throw new Error('Failed to load publishing data');
       }
-      setAllLessons(lessons);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Failed to load data');

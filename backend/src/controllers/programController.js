@@ -327,5 +327,107 @@ module.exports = {
   getProgram,
   updateProgram,
   deleteProgram,
-  updateProgramAssets
+  updateProgramAssets,
+  getPublishingData
+};
+
+const getPublishingData = async (req, res) => {
+  try {
+    // Role-based filtering: viewers can only see published programs
+    const programFilter = req.user.role === 'viewer' ? { status: 'published' } : {};
+    
+    // Get all programs with their terms and lessons in one aggregation
+    const publishingData = await Program.aggregate([
+      { $match: programFilter },
+      {
+        $lookup: {
+          from: 'terms',
+          localField: '_id',
+          foreignField: 'programId',
+          as: 'terms'
+        }
+      },
+      {
+        $lookup: {
+          from: 'lessons',
+          let: { termIds: '$terms._id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $in: ['$termId', '$$termIds'] }
+              }
+            }
+          ],
+          as: 'lessons'
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          status: 1,
+          createdAt: 1,
+          publishedAt: 1,
+          terms: {
+            $map: {
+              input: '$terms',
+              as: 'term',
+              in: {
+                _id: '$$term._id',
+                title: '$$term.title'
+              }
+            }
+          },
+          lessons: {
+            $map: {
+              input: '$lessons',
+              as: 'lesson',
+              in: {
+                _id: '$$lesson._id',
+                title: '$$lesson.title',
+                status: '$$lesson.status',
+                publishAt: '$$lesson.publishAt',
+                publishedAt: '$$lesson.publishedAt',
+                termId: '$$lesson.termId'
+              }
+            }
+          }
+        }
+      }
+    ]);
+
+    // Format the response for the frontend
+    const programs = [];
+    const allLessons = [];
+
+    publishingData.forEach(program => {
+      programs.push({
+        _id: program._id,
+        title: program.title,
+        status: program.status,
+        createdAt: program.createdAt,
+        publishedAt: program.publishedAt
+      });
+
+      program.lessons.forEach(lesson => {
+        const term = program.terms.find(t => t._id.equals(lesson.termId));
+        allLessons.push({
+          ...lesson,
+          programTitle: program.title,
+          termTitle: term ? term.title : 'Unknown Term',
+          programId: program._id,
+          termId: lesson.termId
+        });
+      });
+    });
+
+    res.json({
+      programs,
+      lessons: allLessons
+    });
+
+  } catch (error) {
+    console.error('Error getting publishing data:', error);
+    res.status(500).json({ message: 'Failed to get publishing data' });
+  }
 };
