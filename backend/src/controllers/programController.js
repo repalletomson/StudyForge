@@ -336,98 +336,66 @@ const getPublishingData = async (req, res) => {
     // Role-based filtering: viewers can only see published programs
     const programFilter = req.user.role === 'viewer' ? { status: 'published' } : {};
     
-    // Get all programs with their terms and lessons in one aggregation
-    const publishingData = await Program.aggregate([
-      { $match: programFilter },
-      {
-        $lookup: {
-          from: 'terms',
-          localField: '_id',
-          foreignField: 'programId',
-          as: 'terms'
-        }
-      },
-      {
-        $lookup: {
-          from: 'lessons',
-          let: { termIds: '$terms._id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: { $in: ['$termId', '$$termIds'] }
-              }
-            }
-          ],
-          as: 'lessons'
-        }
-      },
-      {
-        $project: {
-          _id: 1,
-          title: 1,
-          status: 1,
-          createdAt: 1,
-          publishedAt: 1,
-          terms: {
-            $map: {
-              input: '$terms',
-              as: 'term',
-              in: {
-                _id: '$$term._id',
-                title: '$$term.title'
-              }
-            }
-          },
-          lessons: {
-            $map: {
-              input: '$lessons',
-              as: 'lesson',
-              in: {
-                _id: '$$lesson._id',
-                title: '$$lesson.title',
-                status: '$$lesson.status',
-                publishAt: '$$lesson.publishAt',
-                publishedAt: '$$lesson.publishedAt',
-                termId: '$$lesson.termId'
-              }
-            }
-          }
-        }
-      }
-    ]);
+    // Get programs
+    const programs = await Program.find(programFilter)
+      .select('_id title status createdAt publishedAt')
+      .sort({ createdAt: -1 });
 
-    // Format the response for the frontend
-    const programs = [];
-    const allLessons = [];
+    // Get all terms for these programs
+    const programIds = programs.map(p => p._id);
+    const terms = await Term.find({ programId: { $in: programIds } })
+      .select('_id title programId');
 
-    publishingData.forEach(program => {
-      programs.push({
-        _id: program._id,
-        title: program.title,
-        status: program.status,
-        createdAt: program.createdAt,
-        publishedAt: program.publishedAt
-      });
+    // Get all lessons for these terms
+    const termIds = terms.map(t => t._id);
+    const lessons = await Lesson.find({ termId: { $in: termIds } })
+      .select('_id title status publishAt publishedAt termId');
 
-      program.lessons.forEach(lesson => {
-        const term = program.terms.find(t => t._id.equals(lesson.termId));
-        allLessons.push({
-          ...lesson,
-          programTitle: program.title,
-          termTitle: term ? term.title : 'Unknown Term',
-          programId: program._id,
-          termId: lesson.termId
-        });
-      });
+    // Create lookup maps
+    const termMap = new Map();
+    terms.forEach(term => {
+      termMap.set(term._id.toString(), term);
+    });
+
+    const programMap = new Map();
+    programs.forEach(program => {
+      programMap.set(program._id.toString(), program);
+    });
+
+    // Format lessons with program and term info
+    const formattedLessons = lessons.map(lesson => {
+      const term = termMap.get(lesson.termId.toString());
+      const program = term ? programMap.get(term.programId.toString()) : null;
+      
+      return {
+        _id: lesson._id,
+        title: lesson.title,
+        status: lesson.status,
+        publishAt: lesson.publishAt,
+        publishedAt: lesson.publishedAt,
+        termId: lesson.termId,
+        programId: term ? term.programId : null,
+        programTitle: program ? program.title : 'Unknown Program',
+        termTitle: term ? term.title : 'Unknown Term'
+      };
     });
 
     res.json({
-      programs,
-      lessons: allLessons
+      programs: programs.map(p => ({
+        _id: p._id,
+        title: p.title,
+        status: p.status,
+        createdAt: p.createdAt,
+        publishedAt: p.publishedAt
+      })),
+      lessons: formattedLessons
     });
 
   } catch (error) {
     console.error('Error getting publishing data:', error);
-    res.status(500).json({ message: 'Failed to get publishing data' });
+    res.status(500).json({ 
+      message: 'Failed to get publishing data',
+      error: error.message 
+    });
   }
 };
