@@ -36,14 +36,7 @@ const getPrograms = async (req, res) => {
     const { status, language, topic, cursor, limit = 20, search } = req.query;
 
     const filter = {};
-    
-    // Role-based filtering: viewers can only see published programs
-    if (req.user.role === 'viewer') {
-      filter.status = 'published';
-    } else if (status) {
-      filter.status = status;
-    }
-    
+    if (status) filter.status = status;
     if (language) filter.languagePrimary = language;
     if (search) filter.$text = { $search: search };
 
@@ -327,75 +320,5 @@ module.exports = {
   getProgram,
   updateProgram,
   deleteProgram,
-  updateProgramAssets,
-  getPublishingData
-};
-
-const getPublishingData = async (req, res) => {
-  try {
-    // Role-based filtering: viewers can only see published programs
-    const programFilter = req.user.role === 'viewer' ? { status: 'published' } : {};
-    
-    // Get programs
-    const programs = await Program.find(programFilter)
-      .select('_id title status createdAt publishedAt')
-      .sort({ createdAt: -1 });
-
-    // Get all terms for these programs
-    const programIds = programs.map(p => p._id);
-    const terms = await Term.find({ programId: { $in: programIds } })
-      .select('_id title programId');
-
-    // Get all lessons for these terms
-    const termIds = terms.map(t => t._id);
-    const lessons = await Lesson.find({ termId: { $in: termIds } })
-      .select('_id title status publishAt publishedAt termId');
-
-    // Create lookup maps
-    const termMap = new Map();
-    terms.forEach(term => {
-      termMap.set(term._id.toString(), term);
-    });
-
-    const programMap = new Map();
-    programs.forEach(program => {
-      programMap.set(program._id.toString(), program);
-    });
-
-    // Format lessons with program and term info
-    const formattedLessons = lessons.map(lesson => {
-      const term = termMap.get(lesson.termId.toString());
-      const program = term ? programMap.get(term.programId.toString()) : null;
-      
-      return {
-        _id: lesson._id,
-        title: lesson.title,
-        status: lesson.status,
-        publishAt: lesson.publishAt,
-        publishedAt: lesson.publishedAt,
-        termId: lesson.termId,
-        programId: term ? term.programId : null,
-        programTitle: program ? program.title : 'Unknown Program',
-        termTitle: term ? term.title : 'Unknown Term'
-      };
-    });
-
-    res.json({
-      programs: programs.map(p => ({
-        _id: p._id,
-        title: p.title,
-        status: p.status,
-        createdAt: p.createdAt,
-        publishedAt: p.publishedAt
-      })),
-      lessons: formattedLessons
-    });
-
-  } catch (error) {
-    console.error('Error getting publishing data:', error);
-    res.status(500).json({ 
-      message: 'Failed to get publishing data',
-      error: error.message 
-    });
-  }
+  updateProgramAssets
 };

@@ -11,7 +11,6 @@ const router = express.Router();
 router.use(authenticate);
 
 router.get('/programs', authorize(['admin', 'editor', 'viewer']), programController.getPrograms);
-router.get('/programs/publishing-data', authorize(['admin', 'editor', 'viewer']), programController.getPublishingData);
 router.post('/programs', authorize(['admin', 'editor']), programController.createProgram);
 router.get('/programs/:id', authorize(['admin', 'editor', 'viewer']), programController.getProgram);
 router.put('/programs/:id', authorize(['admin', 'editor']), programController.updateProgram);
