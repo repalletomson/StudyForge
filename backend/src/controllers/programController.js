@@ -36,7 +36,14 @@ const getPrograms = async (req, res) => {
     const { status, language, topic, cursor, limit = 20, search } = req.query;
 
     const filter = {};
-    if (status) filter.status = status;
+    
+    // Role-based filtering: viewers can only see published programs
+    if (req.user.role === 'viewer') {
+      filter.status = 'published';
+    } else if (status) {
+      filter.status = status;
+    }
+    
     if (language) filter.languagePrimary = language;
     if (search) filter.$text = { $search: search };
 

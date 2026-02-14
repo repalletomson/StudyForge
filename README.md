@@ -2,6 +2,35 @@
 
 A modern, full-stack educational content management system built with React, Node.js, and MongoDB Atlas. Features role-based access control, automated publishing workflows, and a comprehensive content management interface.
 
+## 📁 Project Structure
+
+```
+StudyForge/
+├── backend/                 # Node.js API Server
+│   ├── src/
+│   │   ├── config/         # Database & logging setup
+│   │   ├── controllers/    # API request handlers
+│   │   ├── middleware/     # Auth & error handling
+│   │   ├── models/         # MongoDB schemas
+│   │   ├── routes/         # API endpoints
+│   │   ├── services/       # Background jobs
+│   │   └── utils/          # Helper functions
+│   ├── Dockerfile
+│   └── package.json
+├── frontend/               # React SPA
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   ├── pages/          # Route-level pages
+│   │   ├── services/       # API calls
+│   │   └── utils/          # Helper functions
+│   ├── Dockerfile
+│   └── package.json
+├── migrations/             # Database migrations
+├── docker-compose.yml      # Production setup
+├── .env.example           # Environment template
+└── README.md
+```
+
 ## 🏗️ Architecture Overview
 
 ```
@@ -12,7 +41,7 @@ A modern, full-stack educational content management system built with React, Nod
 │                 │    │                 │    │                 │
 │ • Landing Page  │    │ • REST API      │    │ • Auto Publish  │
 │ • Admin Panel   │    │ • Auth & RBAC   │    │ • Scheduling    │
-│ • Content Mgmt  │    │ • File Upload   │    │ • Notifications │
+│ • Content Mgmt  │    │ • Media URLs    │    │ • Notifications │
 │                 │    │                 │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
@@ -20,20 +49,20 @@ A modern, full-stack educational content management system built with React, Nod
          ▼                       ▼                       ▼
 ┌──────────────        ┌─────────────────┐    ┌─────────────────┐
 │                 │    │                 │    │                 │
-│                 │    │  MongoDB Atlas  │    │   File Storage  │
-│                 │    │  (Database)     │    │   (Local/Cloud) │
+│                 │    │  MongoDB Atlas  │    │   External URLs │
+│                 │    │  (Database)     │    │   (Media Links) │
 │                 │    │                 │    │                 │
-│                 │    │ • Users         │    │ • Images        │
-│                 │    │ • Programs      │    │ • Videos        │
-│                 │    │ • Lessons       │    │ • Documents     │
-│                 │    │ • Assets        │    │                 │
+│                 │    │ • Users         │    │ • YouTube       │
+│                 │    │ • Programs      │    │ • Image URLs    │
+│                 │    │ • Lessons       │    │ • External CDN  │
+│                 │    │ • Media URLs    │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
 ### Key Components
 
 - **Frontend (React)**: Modern SPA with landing page and admin dashboard
-- **Backend (Node.js)**: RESTful API with authentication and file handling
+- **Backend (Node.js)**: RESTful API with authentication and media URL handling
 - **Worker Process**: Background job processing for scheduled publishing
 - **Database (MongoDB Atlas)**: Cloud-hosted document database
 
